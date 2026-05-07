@@ -1,0 +1,4355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FlowForge — Make-Compatible Workflow Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e14;
+    --bg-grid: #11161f;
+    --surface: #141a23;
+    --surface-2: #1a212c;
+    --surface-3: #212a38;
+    --border: #1f2733;
+    --border-strong: #2d3848;
+    --text: #d4dce8;
+    --text-dim: #8896a8;
+    --text-muted: #5a6577;
+    --accent: #ffb454;
+    --accent-dim: #b87f3b;
+    --cyan: #7fdbca;
+    --green: #95e6cb;
+    --red: #ff7e80;
+    --violet: #c0a0ff;
+    --blue: #6fafff;
+    --pink: #f29df0;
+    --shadow: 0 12px 32px rgba(0,0,0,0.5);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--text);
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 13px; line-height: 1.5;
+  }
+  code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+  .app {
+    display: grid;
+    grid-template-rows: 56px 1fr 200px;
+    grid-template-columns: 220px 1fr 360px;
+    grid-template-areas:
+      "topbar topbar topbar"
+      "palette canvas inspector"
+      "logs    logs   inspector";
+    height: 100vh;
+  }
+  .topbar {
+    grid-area: topbar;
+    display: flex; align-items: center;
+    padding: 0 16px; gap: 5px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    font-family: 'Fraunces', serif;
+    font-weight: 800; font-size: 22px;
+    letter-spacing: -0.02em;
+    color: var(--accent); margin-right: 10px;
+  }
+  .logo span { color: var(--text); }
+  .logo::before { content: '◈'; margin-right: 8px; color: var(--cyan); }
+  .scenario-name {
+    font-size: 12px; color: var(--text-dim);
+    padding: 0 10px; border-left: 1px solid var(--border);
+    font-weight: 500;
+    max-width: 220px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  .topbar .spacer { flex: 1; }
+  .btn {
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    padding: 6px 11px; border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px; font-weight: 500;
+    transition: all 0.12s ease;
+    display: inline-flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--border-strong); border-color: var(--text-muted); }
+  .btn-primary {
+    background: var(--accent); color: var(--bg);
+    border-color: var(--accent); font-weight: 700;
+  }
+  .btn-primary:hover { background: #ffc270; border-color: #ffc270; }
+  .btn-danger { color: var(--red); }
+  .btn-danger:hover { background: rgba(255, 126, 128, 0.1); }
+  .btn-ghost { background: transparent; border-color: var(--border); }
+  .btn-ghost:hover { background: var(--surface-2); }
+  .btn-sm { padding: 4px 8px; font-size: 10px; }
+
+  .zoom-controls {
+    display: inline-flex; align-items: center;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .zoom-controls button {
+    background: transparent; border: none; color: var(--text);
+    width: 26px; height: 28px; cursor: pointer;
+    font-size: 14px; font-weight: 600;
+  }
+  .zoom-controls button:hover { background: var(--border-strong); }
+  .zoom-display {
+    font-size: 10px; color: var(--text-dim);
+    width: 42px; text-align: center;
+    border-left: 1px solid var(--border-strong);
+    border-right: 1px solid var(--border-strong);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .palette {
+    grid-area: palette;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto; padding: 14px 12px;
+  }
+  .palette h3 {
+    font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.15em; color: var(--text-muted);
+    font-weight: 600; margin-bottom: 8px; padding: 0 4px;
+  }
+  .palette-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 4px; cursor: pointer;
+    font-size: 12px; transition: all 0.12s ease;
+    user-select: none;
+  }
+  .palette-item:hover {
+    border-color: var(--accent-dim); transform: translateX(2px);
+  }
+  .palette-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: grid; place-items: center;
+    font-size: 14px; font-weight: 700; flex-shrink: 0;
+  }
+  .type-http       { color: var(--accent); background: rgba(255,180,84,0.12); }
+  .type-filter     { color: var(--cyan);   background: rgba(127,219,202,0.12); }
+  .type-router     { color: var(--violet); background: rgba(192,160,255,0.12); }
+  .type-sleep      { color: var(--blue);   background: rgba(111,175,255,0.12); }
+  .type-iterator   { color: var(--pink);   background: rgba(242,157,240,0.12); }
+  .type-aggregator { color: var(--green);  background: rgba(149,230,203,0.12); }
+  .type-set        { color: var(--text-dim); background: rgba(136,150,168,0.12); }
+  .type-unknown    { color: var(--red);    background: rgba(255,126,128,0.12); }
+
+  /* Make-style app colors take precedence on imported modules */
+  .node-bubble.app-airtable  { background: rgba(255, 188, 47, 0.14); color: #FFBC2F; }
+  .node-bubble.app-http      { background: rgba(133, 222, 119, 0.14); color: #85DE77; }
+  .node-bubble.app-builtin   { background: rgba(192, 160, 255, 0.14); color: var(--violet); }
+  .node-bubble.app-util      { background: rgba(136, 150, 168, 0.14); color: var(--text-dim); }
+  .node-bubble.app-datastore { background: rgba(127, 219, 202, 0.14); color: var(--cyan); }
+  .node-bubble.app-helper    { background: rgba(255, 180, 84, 0.14); color: var(--accent); }
+  .node-bubble.app-google    { background: rgba(234, 67, 53, 0.18); color: #EA4335; }
+  .node-bubble.app-slack     { background: rgba(74, 21, 75, 0.4); color: #ECB22E; }
+  .node-bubble.app-webhook   { background: rgba(111, 175, 255, 0.14); color: var(--blue); }
+
+  .canvas-wrap {
+    grid-area: canvas; position: relative;
+    overflow: auto; background-color: var(--bg);
+    background-image: radial-gradient(circle, var(--bg-grid) 1px, transparent 1px);
+    background-size: 22px 22px;
+    overscroll-behavior: contain;
+  }
+  .canvas {
+    position: relative; min-width: 100%; min-height: 100%;
+    padding: 60px 80px;
+    transform-origin: 0 0;
+    transition: transform 0.08s ease-out;
+  }
+  .empty-state {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    color: var(--text-muted); font-size: 13px;
+    pointer-events: none; text-align: center;
+  }
+  .empty-state strong {
+    font-family: 'Fraunces', serif; font-size: 32px;
+    font-weight: 600; color: var(--text-dim);
+    display: block; margin-bottom: 8px; font-style: italic;
+  }
+  .empty-state .hint {
+    max-width: 420px; margin: 0 auto; line-height: 1.6;
+    font-size: 12px;
+  }
+  .empty-state kbd {
+    display: inline-block; padding: 1px 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--text);
+  }
+
+  .chain {
+    display: flex; align-items: center;
+    gap: 0; flex-wrap: nowrap; width: max-content;
+  }
+  .branches {
+    display: flex; flex-direction: column;
+    gap: 14px; padding-left: 28px;
+    border-left: 2px dashed var(--border-strong);
+    margin-left: 8px; margin-top: 14px;
+  }
+  .branch-row {
+    display: flex; align-items: center;
+    position: relative;
+  }
+  .branch-row::before {
+    content: ''; position: absolute;
+    left: -28px; top: 50%;
+    width: 26px; height: 2px;
+    background: var(--border-strong);
+  }
+  .branch-label {
+    font-size: 9px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.15em;
+    margin-right: 8px; min-width: 60px; font-weight: 600;
+  }
+
+  .node {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center;
+    width: 140px; flex-shrink: 0;
+    cursor: pointer;
+  }
+  .node-bubble {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: var(--surface);
+    border: 2.5px solid var(--border-strong);
+    display: grid; place-items: center;
+    font-size: 28px; font-weight: 700;
+    transition: all 0.18s ease;
+    position: relative;
+  }
+  .node:hover .node-bubble { border-color: var(--text-muted); }
+  .node.selected .node-bubble {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px rgba(255, 180, 84, 0.15);
+  }
+  .node.running .node-bubble {
+    border-color: var(--cyan);
+    animation: pulse 1s ease-in-out infinite;
+  }
+  .node.success .node-bubble { border-color: var(--green); }
+  .node.error   .node-bubble { border-color: var(--red); }
+  .node.skipped { opacity: 0.45; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(127, 219, 202, 0.3); }
+    50%      { box-shadow: 0 0 0 10px rgba(127, 219, 202, 0.05); }
+  }
+  .node-num {
+    position: absolute; top: -4px; left: -4px;
+    min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px;
+    background: var(--bg); border: 1.5px solid var(--border-strong);
+    color: var(--text-dim); font-size: 9px; font-weight: 700;
+    display: grid; place-items: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .node-status {
+    position: absolute; top: -4px; right: -4px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--surface); border: 2px solid var(--surface);
+    display: none;
+  }
+  .node.success .node-status { display: block; background: var(--green); }
+  .node.error   .node-status { display: block; background: var(--red); }
+  .node-label {
+    margin-top: 8px;
+    font-size: 11px; font-weight: 600;
+    text-align: center; line-height: 1.3;
+    color: var(--text);
+    max-width: 140px;
+    overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .node-sub {
+    margin-top: 2px;
+    font-size: 9px; color: var(--text-muted);
+    text-align: center; line-height: 1.3;
+    max-width: 140px;
+    overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .node-filter-dot {
+    position: absolute; top: 4px; left: 36px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 0 2px var(--surface);
+  }
+  .node-delete {
+    position: absolute; top: -6px; right: -6px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    color: var(--red); cursor: pointer;
+    display: none; place-items: center;
+    font-size: 14px; line-height: 1; padding: 0;
+    z-index: 5;
+  }
+  .node:hover .node-delete,
+  .node.selected .node-delete { display: grid; }
+  .node-delete:hover { background: var(--red); color: var(--bg); }
+
+  .connector {
+    width: 32px; height: 2px;
+    background: linear-gradient(90deg, var(--border-strong), var(--accent-dim));
+    flex-shrink: 0; position: relative;
+    margin-top: -30px;
+  }
+  .connector::after {
+    content: ''; position: absolute;
+    right: -1px; top: -3px; width: 0; height: 0;
+    border-left: 7px solid var(--accent-dim);
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+  }
+  .add-node-btn {
+    width: 42px; height: 42px; border-radius: 50%;
+    border: 2px dashed var(--border-strong);
+    background: transparent; color: var(--text-muted);
+    font-size: 20px; cursor: pointer;
+    display: grid; place-items: center;
+    flex-shrink: 0; margin-left: 12px; margin-top: -30px;
+    transition: all 0.12s ease;
+  }
+  .add-node-btn:hover {
+    border-color: var(--accent); color: var(--accent);
+    transform: scale(1.08);
+  }
+  .route-actions {
+    display: flex; flex-direction: column; gap: 4px;
+    margin-left: 8px; margin-top: -30px;
+  }
+  .route-del {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--text-muted);
+    font-size: 12px; cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .route-del:hover { border-color: var(--red); color: var(--red); }
+  .add-branch-btn {
+    align-self: flex-start;
+    background: transparent; border: 1px dashed var(--border-strong);
+    color: var(--text-muted);
+    padding: 4px 12px; border-radius: 4px;
+    cursor: pointer; font-family: inherit; font-size: 10px;
+    margin-top: 4px; margin-left: 64px;
+  }
+  .add-branch-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .inspector {
+    grid-area: inspector;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+  .insp-header {
+    padding: 14px 18px 10px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .insp-header h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 17px; font-weight: 600;
+  }
+  .insp-header .subtitle {
+    font-size: 10px; color: var(--text-muted);
+    margin-top: 2px; text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .insp-actions {
+    display: flex; gap: 6px; padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  .insp-body { padding: 14px 18px; flex: 1; overflow-y: auto; }
+  .make-info {
+    font-size: 10px; color: var(--violet);
+    background: rgba(192,160,255,0.08);
+    padding: 6px 10px; border-radius: 5px;
+    margin-bottom: 14px; font-family: 'JetBrains Mono', monospace;
+  }
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block; font-size: 10px; color: var(--text-dim);
+    margin-bottom: 5px; text-transform: uppercase;
+    letter-spacing: 0.08em; font-weight: 600;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%; background: var(--bg);
+    border: 1px solid var(--border-strong); color: var(--text);
+    padding: 8px 10px; border-radius: 6px;
+    font-family: inherit; font-size: 12px;
+    transition: border-color 0.12s ease;
+  }
+  .field textarea, .field input.mono { font-family: 'JetBrains Mono', monospace; }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none; border-color: var(--accent);
+  }
+  .field textarea {
+    resize: vertical; min-height: 80px;
+    font-size: 11px; line-height: 1.5;
+  }
+  .field .hint {
+    font-size: 10px; color: var(--text-muted);
+    margin-top: 4px; line-height: 1.4;
+  }
+  .field code { color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+  .kv-row {
+    display: grid; grid-template-columns: 1fr 1.2fr 24px;
+    gap: 4px; margin-bottom: 4px;
+  }
+  .kv-row input { font-size: 11px; padding: 6px 8px; font-family: 'JetBrains Mono', monospace; }
+  .kv-row button {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-muted); border-radius: 4px;
+    cursor: pointer; font-size: 14px; line-height: 1;
+  }
+  .kv-row button:hover { color: var(--red); border-color: var(--red); }
+  .kv-add {
+    background: transparent;
+    border: 1px dashed var(--border-strong);
+    color: var(--text-dim);
+    width: 100%; padding: 6px; border-radius: 4px;
+    cursor: pointer; font-family: inherit;
+    font-size: 11px; margin-top: 4px;
+  }
+  .kv-add:hover { border-color: var(--accent); color: var(--accent); }
+  .no-selection {
+    display: grid; place-items: center; height: 100%;
+    color: var(--text-muted); text-align: center;
+    font-size: 12px; padding: 20px;
+  }
+  .no-selection .icon {
+    font-size: 40px; margin-bottom: 12px; color: var(--border-strong);
+  }
+  .output-panel {
+    margin-top: 12px;
+    border-top: 1px dashed var(--border-strong);
+    padding-top: 12px;
+  }
+  .output-header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .output-header .label {
+    font-size: 10px; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+  .output-status {
+    font-size: 9px; padding: 2px 6px; border-radius: 3px;
+    font-weight: 700; text-transform: uppercase;
+  }
+  .output-status.ok  { background: rgba(149,230,203,0.15); color: var(--green); }
+  .output-status.err { background: rgba(255,126,128,0.15); color: var(--red); }
+  .output-body {
+    background: var(--bg); padding: 10px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px; color: var(--text-dim);
+    max-height: 260px; overflow: auto;
+    white-space: pre-wrap; word-break: break-word;
+    border: 1px solid var(--border);
+  }
+
+  /* Make-style INPUT/OUTPUT tree inspector */
+  .io-section {
+    margin-top: 14px;
+    border-top: 1px dashed var(--border-strong);
+    padding-top: 12px;
+  }
+  .io-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .io-title {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--text-dim); font-weight: 700;
+  }
+  .io-actions { display: flex; gap: 4px; }
+  .io-actions button {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-dim); padding: 2px 8px; border-radius: 3px;
+    cursor: pointer; font-size: 10px; font-family: inherit;
+  }
+  .io-actions button:hover { color: var(--text); border-color: var(--border-strong); }
+  .io-search {
+    width: 100%; box-sizing: border-box; margin-bottom: 6px;
+    padding: 6px 9px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text);
+    font-size: 11px; font-family: 'JetBrains Mono', monospace;
+  }
+  .io-search:focus { outline: none; border-color: var(--accent); }
+  .tree {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 0; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    max-height: 360px; overflow: auto; line-height: 1.5;
+  }
+  .tree-empty { padding: 20px; text-align: center; color: var(--text-dim); font-style: italic; }
+  .tn-row {
+    display: flex; align-items: baseline; gap: 6px;
+    padding: 2px 10px; white-space: nowrap;
+  }
+  .tn-row.tn-expandable { cursor: pointer; user-select: none; }
+  .tn-row.tn-expandable:hover { background: rgba(255,255,255,0.03); }
+  .tn-toggle {
+    width: 12px; flex-shrink: 0; display: inline-block; text-align: center;
+    color: var(--accent); font-size: 11px; user-select: none;
+  }
+  .tn-toggle.collapsed::before { content: '⊕'; }
+  .tn-toggle.expanded::before { content: '⊖'; }
+  .tn-toggle.disabled::before { content: '·'; color: var(--border-strong); }
+  .tn-label { color: var(--accent); font-weight: 500; flex-shrink: 0; }
+  .tn-type { color: var(--text-dim); font-style: italic; font-size: 10.5px; }
+  .tn-value {
+    color: var(--text); word-break: break-word;
+    white-space: pre-wrap; min-width: 0; overflow-wrap: anywhere;
+  }
+  .tn-value.tn-string { color: var(--text); }
+  .tn-value.tn-number { color: var(--green); }
+  .tn-value.tn-bool { color: var(--green); font-style: italic; }
+  .tn-empty { color: var(--text-dim); font-style: italic; }
+  .tn-meta {
+    margin-left: 4px; color: var(--text-dim); font-size: 10px;
+    background: rgba(255,255,255,0.04); padding: 0 5px; border-radius: 3px;
+  }
+  .tn-children.collapsed { display: none; }
+  .tn-hidden { display: none !important; }
+  .tn-match { background: rgba(255, 215, 0, 0.10); }
+
+  .logs {
+    grid-area: logs; background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  .logs-header {
+    display: flex; align-items: center;
+    padding: 9px 16px; border-bottom: 1px solid var(--border);
+    font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.12em; color: var(--text-dim);
+    font-weight: 600; gap: 12px;
+  }
+  .logs-header .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-muted);
+  }
+  .logs-header .dot.active { background: var(--green); animation: pulse-dot 1s infinite; }
+  @keyframes pulse-dot { 50% { opacity: 0.3; } }
+  .logs-clear {
+    margin-left: auto; background: none; border: none;
+    color: var(--text-muted); cursor: pointer;
+    font-size: 10px; font-family: inherit;
+    text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  .logs-clear:hover { color: var(--text); }
+  .logs-body {
+    flex: 1; overflow-y: auto;
+    padding: 6px 16px; font-size: 11px; line-height: 1.6;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .log-entry {
+    padding: 4px 0; border-bottom: 1px solid var(--border);
+    display: grid; grid-template-columns: 70px 70px 1fr; gap: 10px;
+  }
+  .log-entry:last-child { border-bottom: none; }
+  .log-time { color: var(--text-muted); font-size: 10px; padding-top: 2px; }
+  .log-tag {
+    font-size: 9px; padding: 2px 5px; border-radius: 3px;
+    text-align: center; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    height: fit-content;
+  }
+  .log-tag.info  { background: rgba(111,175,255,0.15); color: var(--blue); }
+  .log-tag.ok    { background: rgba(149,230,203,0.15); color: var(--green); }
+  .log-tag.err   { background: rgba(255,126,128,0.15); color: var(--red); }
+  .log-tag.warn  { background: rgba(255,180,84,0.15); color: var(--accent); }
+  .log-msg { color: var(--text); word-break: break-word; }
+  .log-msg pre {
+    background: var(--bg); padding: 6px 8px;
+    border-radius: 4px; margin-top: 4px;
+    overflow-x: auto; font-size: 10px;
+    color: var(--text-dim); white-space: pre-wrap;
+    max-height: 120px; overflow-y: auto;
+  }
+  .log-msg code { color: var(--accent); }
+
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: none; place-items: center; z-index: 100;
+    padding: 20px;
+  }
+  .modal-backdrop.open { display: grid; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px; padding: 20px;
+    width: 420px; max-width: 100%;
+    max-height: 85vh; overflow: auto;
+    box-shadow: var(--shadow);
+  }
+  .modal-wide { width: 560px; }
+  .modal h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 20px; font-weight: 600; margin-bottom: 6px;
+  }
+  .modal .modal-sub {
+    font-size: 11px; color: var(--text-muted);
+    margin-bottom: 14px; line-height: 1.5;
+  }
+  .modal-options { display: grid; gap: 5px; }
+  .modal-options .palette-item { margin-bottom: 0; }
+  .modal-actions {
+    display: flex; gap: 8px; justify-content: flex-end;
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .saved-list { display: grid; gap: 6px; }
+  .saved-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 6px; align-items: center;
+    padding: 10px 12px; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 8px;
+  }
+  .saved-item .name {
+    font-size: 13px; font-weight: 600; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  .saved-item .meta {
+    grid-column: 1; font-size: 10px;
+    color: var(--text-muted); margin-top: 2px;
+  }
+
+  .vault-walkthrough {
+    background: rgba(192,160,255,0.06);
+    border: 1px solid rgba(192,160,255,0.2);
+    border-radius: 8px; padding: 12px;
+    margin-bottom: 16px;
+    font-size: 11px; line-height: 1.6;
+    color: var(--text-dim);
+  }
+  .vault-walkthrough strong { color: var(--text); }
+  .vault-walkthrough ol { margin: 6px 0 0 18px; padding: 0; }
+  .vault-walkthrough code {
+    color: var(--accent); background: var(--bg);
+    padding: 1px 5px; border-radius: 3px;
+    font-size: 10px;
+  }
+
+  .secret-row {
+    display: grid; grid-template-columns: 170px 1fr 28px 24px;
+    gap: 5px; margin-bottom: 5px; align-items: center;
+  }
+  .secret-row input {
+    background: var(--bg); border: 1px solid var(--border-strong);
+    color: var(--text); padding: 7px 9px; border-radius: 5px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  }
+  .secret-row input.val { letter-spacing: 0.5px; }
+  .secret-row .reveal {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-muted); border-radius: 4px;
+    cursor: pointer; font-size: 11px; padding: 0;
+    height: 28px;
+  }
+  .secret-row .del {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-muted); border-radius: 4px;
+    cursor: pointer; font-size: 14px; height: 28px;
+  }
+  .secret-row .del:hover { color: var(--red); border-color: var(--red); }
+  .secret-row .reveal:hover { color: var(--accent); border-color: var(--accent); }
+
+  .empty-msg {
+    text-align: center; padding: 30px 10px;
+    color: var(--text-muted); font-size: 12px;
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="logo">flow<span>forge</span></div>
+    <div class="scenario-name" id="scenario-name">untitled scenario</div>
+    <span id="ff-sync-pill" class="offline">offline</span>
+    <div style="font-size:9px;color:var(--text-muted);margin-left:8px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;">v10 · apr 24</div>
+
+    <div class="zoom-controls" style="margin-left: 8px;">
+      <button id="btn-zoom-out" title="Zoom out (Ctrl/Cmd + scroll)">−</button>
+      <div class="zoom-display" id="zoom-display">100%</div>
+      <button id="btn-zoom-in" title="Zoom in (Ctrl/Cmd + scroll)">+</button>
+      <button id="btn-zoom-fit" title="Reset to 100%">⇱</button>
+    </div>
+
+    <div class="spacer"></div>
+    <button class="btn btn-ghost" id="btn-flows" title="Manage flows on the server">☰ Flows</button>
+    <button class="btn btn-ghost" id="btn-schedule" title="Schedule this flow to run automatically">⏰ Schedule</button>
+    <button class="btn btn-ghost" id="btn-history" title="Run history for this flow">📜 History</button>
+    <button class="btn btn-ghost" id="btn-webhook" title="Show webhook URL for this flow">🪝 Webhook</button>
+    <button class="btn btn-ghost" id="btn-load-example" title="Load example workflow">⚡ Example</button>
+    <button class="btn btn-ghost" id="btn-import-make" title="Import a Make.com blueprint JSON">↑ Make</button>
+    <button class="btn btn-ghost" id="btn-import-ff" title="Import a FlowForge workflow">↑ FF</button>
+    <button class="btn btn-ghost" id="btn-workflows" title="Local-only saved workflows" style="display:none;">💾 Local</button>
+    <button class="btn btn-ghost" id="btn-secrets" title="API keys &amp; secrets">🔑 Vault</button>
+    <button class="btn btn-ghost" id="btn-export-make" title="Export as Make blueprint">↓ Make</button>
+    <button class="btn btn-ghost" id="btn-export-ff" title="Export as FlowForge JSON">↓ FF</button>
+    <button class="btn btn-ghost" id="btn-reset" title="Discard the autosaved workflow and start fresh (saved workflows and vault keys are kept)" style="display:none;">🧹 Reset</button>
+    <button class="btn btn-danger" id="btn-clear">⌫</button>
+    <button class="btn btn-primary" id="btn-run" title="Run the whole workflow in the browser. Click again to stop.">▶ Run Local</button>
+    <button class="btn btn-primary" id="btn-run-server" title="Trigger this flow to run in the background on the server" style="background:var(--cyan);border-color:var(--cyan);">⚡ Run on Server</button>
+  </div>
+
+  <aside class="palette">
+    <h3>Modules</h3>
+    <div class="palette-item" data-type="set">
+      <div class="palette-icon type-set">∅</div><span>Set Variable</span>
+    </div>
+    <div class="palette-item" data-type="http">
+      <div class="palette-icon type-http">⇄</div><span>HTTP Request</span>
+    </div>
+    <div class="palette-item" data-type="filter">
+      <div class="palette-icon type-filter">⏚</div><span>Filter</span>
+    </div>
+    <div class="palette-item" data-type="router">
+      <div class="palette-icon type-router">⇶</div><span>Router</span>
+    </div>
+    <div class="palette-item" data-type="sleep">
+      <div class="palette-icon type-sleep">⏱</div><span>Sleep</span>
+    </div>
+    <div class="palette-item" data-type="iterator">
+      <div class="palette-icon type-iterator">↯</div><span>Iterator</span>
+    </div>
+    <div class="palette-item" data-type="aggregator">
+      <div class="palette-icon type-aggregator">∑</div><span>Aggregator</span>
+    </div>
+
+    <h3 style="margin-top:20px;">Tips</h3>
+    <div style="font-size:10px;color:var(--text-dim);padding:0 4px;line-height:1.6;">
+      <strong style="color:var(--text)">Zoom:</strong> Cmd/Ctrl + scroll, or pinch on trackpad.<br><br>
+      <strong style="color:var(--text)">Run one step:</strong> Double-click a module.<br><br>
+      <strong style="color:var(--text)">Refs:</strong><br>
+      <code style="color:var(--accent)">{{N.field}}</code> → step N output<br>
+      <code style="color:var(--accent)">{{KEY}}</code> → secrets vault
+    </div>
+  </aside>
+
+  <div class="canvas-wrap" id="canvas-wrap">
+    <div class="canvas" id="canvas">
+      <div class="empty-state" id="empty-state">
+        <div>
+          <strong>Start building.</strong>
+          <div class="hint">
+            Click a module on the left, or press <kbd>↑ Make</kbd> to import a Make.com blueprint.<br>
+            Pinch on your trackpad or <kbd>Cmd</kbd>+scroll to zoom.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="inspector" id="inspector">
+    <div class="no-selection">
+      <div><div class="icon">⌖</div>Select a module to configure.<br><span style="font-size:10px;">Double-click to run a single step.</span></div>
+    </div>
+  </aside>
+
+  <section class="logs">
+    <div class="logs-header">
+      <div class="dot" id="run-dot"></div>
+      <span>Execution Log</span>
+      <button class="logs-clear" id="btn-clear-logs">Clear</button>
+    </div>
+    <div class="logs-body" id="logs-body"></div>
+  </section>
+</div>
+
+<!-- Add module modal -->
+<div class="modal-backdrop" id="modal-add">
+  <div class="modal">
+    <h3>Add Module</h3>
+    <div class="modal-sub">Pick what to append to this chain</div>
+    <div class="modal-options" id="modal-add-options"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close-modal="modal-add">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Saved workflows modal -->
+<div class="modal-backdrop" id="modal-workflows">
+  <div class="modal modal-wide">
+    <h3>Saved Workflows</h3>
+    <div class="modal-sub">Workflows are stored locally in your browser</div>
+    <div class="saved-list" id="saved-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close-modal="modal-workflows">Close</button>
+      <button class="btn btn-primary" id="btn-save-current">💾 Save Current As…</button>
+    </div>
+  </div>
+</div>
+
+<!-- Secrets vault modal -->
+<div class="modal-backdrop" id="modal-secrets">
+  <div class="modal modal-wide">
+    <h3>🔑 Secrets Vault</h3>
+    <div class="modal-sub">
+      Stored in your browser's localStorage — this device only, never sent anywhere.
+    </div>
+
+    <div class="vault-walkthrough">
+      <strong>How to use:</strong>
+      <ol>
+        <li>Give each secret a <strong>name</strong> (KEY column, like <code>AIRTABLE_PAT</code>) and the <strong>value</strong>.</li>
+        <li>Reference it anywhere — URL, header, body — as <code>{{AIRTABLE_PAT}}</code>.</li>
+        <li>When you import a Make blueprint, Airtable modules arrive with <code>Bearer {{AIRTABLE_PAT}}</code> pre-filled, so just add the key here and you're set.</li>
+      </ol>
+      <div style="margin-top:8px;">
+        <strong>For the Unite → Airtable scenario</strong>, you'll want at minimum:
+        <code>AIRTABLE_PAT</code> (from airtable.com → Developer Hub → Personal access tokens, with scopes <code>data.records:read</code>, <code>data.records:write</code>, and <code>schema.bases:read</code> for better error diagnostics) and
+        <code>UNITE_TOKEN</code> (the Unite bearer token).
+      </div>
+      <div style="margin-top:8px;font-size:10px;">
+        <strong>Special override:</strong> By default, FlowForge truncates datetime values to date-only when sending to Airtable (most Date fields don't accept time). If your Airtable date fields have "Include Time" enabled, set <code>AIRTABLE_KEEP_TIME</code> = <code>true</code> here.
+      </div>
+    </div>
+
+    <div id="secrets-list"></div>
+    <button class="kv-add" id="btn-secret-add">+ Add Secret</button>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close-modal="modal-secrets">Close</button>
+      <button class="btn btn-primary" id="btn-save-secrets">Save Vault</button>
+    </div>
+  </div>
+</div>
+
+<!-- Flows manager modal (server-backed) -->
+<div class="modal-backdrop" id="modal-flows">
+  <div class="modal modal-wide">
+    <h3>☰ Server Flows</h3>
+    <div class="modal-sub">All flows are stored on the server. Select one to edit, schedule, or trigger.</div>
+    <div id="ff-flows-banner" style="display:none;"></div>
+    <div class="saved-list" id="ff-flows-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close-modal="modal-flows">Close</button>
+      <button class="btn btn-ghost" id="ff-btn-flow-rename" title="Rename the current flow">✎ Rename Current</button>
+      <button class="btn btn-ghost" id="ff-btn-flow-duplicate" title="Save the current flow as a new copy">⎘ Duplicate Current</button>
+      <button class="btn btn-primary" id="ff-btn-flow-new">+ New Flow</button>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule modal -->
+<div class="modal-backdrop" id="modal-schedule">
+  <div class="modal">
+    <h3>⏰ Schedule</h3>
+    <div class="modal-sub">When should this flow run automatically? Vercel's cron checks every minute.</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;">
+        <input type="checkbox" id="ff-sched-enabled" /> Flow enabled
+      </label>
+      <label style="font-size:11px;">Schedule type
+        <select id="ff-sched-type" style="display:block;width:100%;margin-top:4px;background:var(--surface-2);color:var(--text);border:1px solid var(--border-strong);padding:6px;border-radius:4px;">
+          <option value="manual">Manual / webhook only</option>
+          <option value="interval">Every N minutes</option>
+          <option value="cron">Cron expression (UTC)</option>
+        </select>
+      </label>
+      <label style="font-size:11px;" id="ff-sched-interval-row">Interval (minutes)
+        <input type="number" id="ff-sched-interval" min="1" value="15" style="display:block;width:100%;margin-top:4px;background:var(--surface-2);color:var(--text);border:1px solid var(--border-strong);padding:6px;border-radius:4px;font-family:'JetBrains Mono',monospace;" />
+      </label>
+      <label style="font-size:11px;" id="ff-sched-cron-row">Cron expression (5 fields, UTC)
+        <input type="text" id="ff-sched-cron" placeholder="*/15 * * * *" style="display:block;width:100%;margin-top:4px;background:var(--surface-2);color:var(--text);border:1px solid var(--border-strong);padding:6px;border-radius:4px;font-family:'JetBrains Mono',monospace;" />
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px;line-height:1.4;">
+          minute · hour · day-of-month · month · day-of-week<br>
+          <code>0 * * * *</code> = top of every hour ·
+          <code>0 9 * * 1-5</code> = 09:00 UTC weekdays ·
+          <code>*/30 * * * *</code> = every 30min
+        </div>
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close-modal="modal-schedule">Cancel</button>
+      <button class="btn btn-primary" id="ff-btn-sched-save">Save Schedule</button>
+    </div>
+  </div>
+</div>
+
+<!-- Run history modal -->
+<div class="modal-backdrop" id="modal-history">
+  <div class="modal modal-wide">
+    <h3>📜 Run History</h3>
+    <div class="modal-sub" id="ff-hist-sub">Recent runs of this flow on the server</div>
+    <div id="ff-history-list" style="max-height:60vh;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close-modal="modal-history">Close</button>
+      <button class="btn btn-ghost" id="ff-btn-hist-refresh">↻ Refresh</button>
+    </div>
+  </div>
+</div>
+
+<!-- Webhook URL modal -->
+<div class="modal-backdrop" id="modal-webhook">
+  <div class="modal modal-wide">
+    <h3>🪝 Webhook URL</h3>
+    <div class="modal-sub">Anyone with this URL can trigger this flow. The request body is passed to the flow as <code>{{0.&lt;field&gt;}}</code>.</div>
+    <div style="margin-top:12px;">
+      <code id="ff-webhook-url" style="display:block;background:var(--surface-2);border:1px solid var(--border-strong);padding:10px;border-radius:6px;word-break:break-all;font-size:12px;color:var(--cyan);"></code>
+    </div>
+    <div style="font-size:10px;color:var(--text-muted);margin-top:10px;line-height:1.6;">
+      <strong style="color:var(--text);">Examples:</strong><br>
+      <code>curl -X POST &lt;url&gt; -H "content-type: application/json" -d '{"email":"hi@x.com"}'</code><br>
+      <code>curl "&lt;url&gt;?email=hi@x.com"</code> (GET works too — query string becomes payload)
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close-modal="modal-webhook">Close</button>
+      <button class="btn btn-danger" id="ff-btn-webhook-rotate" title="Generate a new token. The old URL stops working.">↻ Rotate Token</button>
+      <button class="btn btn-primary" id="ff-btn-webhook-copy">📋 Copy</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tiny status pill that shows server-sync state, attached to scenario-name -->
+<style>
+  #ff-sync-pill {
+    margin-left: 8px;
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  #ff-sync-pill.saving { color: var(--accent); border-color: var(--accent-dim); }
+  #ff-sync-pill.saved  { color: var(--green);  border-color: var(--green); }
+  #ff-sync-pill.err    { color: var(--red);    border-color: var(--red); }
+  #ff-sync-pill.offline{ color: var(--text-muted); }
+  .ff-flow-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    background: var(--surface-2);
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+  .ff-flow-row:hover { border-color: var(--text-muted); }
+  .ff-flow-row.current { border-color: var(--accent); background: var(--surface-3); }
+  .ff-flow-row .name { flex: 1; font-weight: 500; color: var(--text); }
+  .ff-flow-row .meta { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .ff-flow-row .badge {
+    font-size: 9px; padding: 2px 6px; border-radius: 8px;
+    background: var(--surface-3); color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+  .ff-flow-row .badge.on  { color: var(--green); border-color: var(--green); }
+  .ff-flow-row .badge.off { color: var(--text-muted); }
+  .ff-history-row {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+  }
+  .ff-history-row .row1 {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .ff-history-row .status {
+    font-size: 9px; padding: 2px 7px; border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace; font-weight: 600;
+  }
+  .ff-history-row .status.ok      { background: rgba(149, 230, 203, 0.15); color: var(--green); }
+  .ff-history-row .status.err     { background: rgba(255, 126, 128, 0.15); color: var(--red); }
+  .ff-history-row .status.queued  { background: rgba(255, 180, 84, 0.15);  color: var(--accent); }
+  .ff-history-row .status.stopped { background: rgba(192, 160, 255, 0.15); color: var(--violet); }
+  .ff-history-row .when {
+    font-family: 'JetBrains Mono', monospace; color: var(--text-muted); font-size: 10px;
+  }
+  .ff-history-row .trigger {
+    font-size: 9px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .ff-history-row .lastlog {
+    margin-top: 4px; color: var(--text-dim); font-size: 10px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+</style>
+
+<input type="file" id="file-input" accept="application/json,.json" style="display:none;">
+
+<script>
+// ============================================================
+//  FlowForge — Make-Compatible Workflow Builder
+// ============================================================
+
+const NODE_TYPES = {
+  set:        { name: 'Set Variable',  icon: '∅' },
+  http:       { name: 'HTTP Request',  icon: '⇄' },
+  filter:     { name: 'Filter',        icon: '⏚' },
+  router:     { name: 'Router',        icon: '⇶' },
+  sleep:      { name: 'Sleep',         icon: '⏱' },
+  iterator:   { name: 'Iterator',      icon: '↯' },
+  aggregator: { name: 'Aggregator',    icon: '∑' },
+  unknown:    { name: 'Unknown',       icon: '?' },
+};
+
+let workflow = [];
+let selectedId = null;
+let nodeIdCounter = 1;
+let scenarioName = 'untitled scenario';
+let scenarioMeta = null;
+let importMode = 'flowforge';
+let lastRunSteps = {};
+let isRunning = false;
+let abortRequested = false;
+
+// ---- Airtable date normalization ------------------------------
+// Unite returns dates as DD-MM-YYYY; Airtable wants YYYY-MM-DD (ISO 8601).
+// When sending a body to api.airtable.com, walk all string values and convert
+// common non-ISO date formats to ISO.
+function normalizeDateString(s) {
+  if (typeof s !== 'string' || !s) return s;
+  // Already fully-qualified ISO with Z or offset — leave alone
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+\-]\d{2}:?\d{2})$/.test(s)) return s;
+  // ISO date-only — leave alone
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // ISO datetime missing seconds: YYYY-MM-DDTHH:MM  → pad to full ISO with Z
+  let m = s.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})$/);
+  if (m) return `${m[1]}T${m[2]}:${m[3]}:00.000Z`;
+  // ISO datetime with seconds but no timezone
+  m = s.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?)$/);
+  if (m) return m[1] + 'Z';
+  // DD-MM-YYYY or DD/MM/YYYY (1-2 digit day/month)
+  m = s.match(/^(\d{1,2})[\-\/](\d{1,2})[\-\/](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  // DD-MM-YYYY HH:mm[:ss] or with T → full ISO
+  m = s.match(/^(\d{1,2})[\-\/](\d{1,2})[\-\/](\d{4})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (m) {
+    const date = `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+    const time = `${m[4].padStart(2,'0')}:${m[5]}:${m[6] || '00'}.000Z`;
+    return `${date}T${time}`;
+  }
+  // YYYY/MM/DD -> YYYY-MM-DD
+  m = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  return s;
+}
+function walkNormalize(obj) {
+  if (obj === null || typeof obj !== 'object') return;
+  if (Array.isArray(obj)) {
+    for (let i = 0; i < obj.length; i++) {
+      if (typeof obj[i] === 'string') obj[i] = normalizeDateString(obj[i]);
+      else walkNormalize(obj[i]);
+    }
+  } else {
+    for (const k of Object.keys(obj)) {
+      if (typeof obj[k] === 'string') obj[k] = normalizeDateString(obj[k]);
+      else walkNormalize(obj[k]);
+    }
+  }
+}
+
+// Truncate full ISO datetimes (YYYY-MM-DDTHH:MM:SS...) to date-only YYYY-MM-DD.
+// Most Airtable date fields have "Include time" disabled, in which case datetime
+// values get rejected even when properly formatted. Stripping the time fixes this.
+// If a vault key AIRTABLE_KEEP_TIME=true is set, this step is skipped.
+function walkStripTime(obj) {
+  if (obj === null || typeof obj !== 'object') return;
+  const stripOne = v => {
+    if (typeof v !== 'string') return v;
+    const m = v.match(/^(\d{4}-\d{2}-\d{2})T\d{2}:\d{2}/);
+    return m ? m[1] : v;
+  };
+  if (Array.isArray(obj)) {
+    for (let i = 0; i < obj.length; i++) {
+      if (typeof obj[i] === 'string') obj[i] = stripOne(obj[i]);
+      else walkStripTime(obj[i]);
+    }
+  } else {
+    for (const k of Object.keys(obj)) {
+      if (typeof obj[k] === 'string') obj[k] = stripOne(obj[k]);
+      else walkStripTime(obj[k]);
+    }
+  }
+}
+
+// Detect if a string still contains an unresolved {{...}} template
+function hasUnresolvedTemplate(s) {
+  return typeof s === 'string' && /\{\{[^{}]+\}\}/.test(s);
+}
+
+// Strip fields from Airtable's `fields` object that are empty/unresolved.
+// Airtable rejects empty strings and literal "{{x.y}}" placeholders for typed fields,
+// but accepts the field being absent — that's our safe default.
+function cleanAirtableFields(obj) {
+  if (!obj || typeof obj !== 'object' || !obj.fields || typeof obj.fields !== 'object') return obj;
+  const cleaned = {};
+  const dropped = [];
+  for (const [k, v] of Object.entries(obj.fields)) {
+    if (v === '' || v === null || v === undefined) { dropped.push(k); continue; }
+    if (hasUnresolvedTemplate(v)) { dropped.push(k); continue; }
+    cleaned[k] = v;
+  }
+  obj.fields = cleaned;
+  obj._droppedFields = dropped; // surface for logging
+  return obj;
+}
+
+function normalizeAirtableBody(bodyStr) {
+  try {
+    const obj = JSON.parse(bodyStr);
+    walkNormalize(obj);
+    // Strip time from datetime values unless user has opted in to keep time.
+    // Most Airtable Date fields have "Include time" off and reject full datetimes.
+    const secrets = (typeof loadSecrets === 'function') ? loadSecrets() : {};
+    if (String(secrets.AIRTABLE_KEEP_TIME || '').toLowerCase() !== 'true') {
+      walkStripTime(obj);
+    }
+    cleanAirtableFields(obj);
+    const dropped = obj._droppedFields || [];
+    delete obj._droppedFields;
+    const out = JSON.stringify(obj);
+    return { body: out, droppedFields: dropped };
+  } catch {
+    return { body: bodyStr, droppedFields: [] };
+  }
+}
+let zoom = 1;
+
+const uid = () => 'n' + (nodeIdCounter++);
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+// LocalStorage helpers ----------------------------------------
+const LS_SECRETS = 'flowforge_secrets_v1';
+const LS_WORKFLOWS = 'flowforge_workflows_v1';
+const LS_AUTOSAVE = 'flowforge_autosave_v2';
+// v2 (2026-04): bumped to discard any pre-fix autosaves that may contain
+// literal Airtable field names (e.g., "Clinic Name") instead of field IDs.
+// v1 keys are also actively cleaned below to free up space.
+try { localStorage.removeItem('flowforge_autosave_v1'); } catch {}
+
+function loadSecrets() {
+  try { return JSON.parse(localStorage.getItem(LS_SECRETS) || '{}'); }
+  catch { return {}; }
+}
+function saveSecrets(obj) {
+  localStorage.setItem(LS_SECRETS, JSON.stringify(obj));
+}
+function loadWorkflows() {
+  try { return JSON.parse(localStorage.getItem(LS_WORKFLOWS) || '{}'); }
+  catch { return {}; }
+}
+function saveWorkflows(obj) {
+  localStorage.setItem(LS_WORKFLOWS, JSON.stringify(obj));
+}
+
+let autosaveTimer;
+function scheduleAutosave() {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(LS_AUTOSAVE, JSON.stringify({
+        name: scenarioName, workflow, scenarioMeta, ts: Date.now(),
+      }));
+    } catch {}
+  }, 800);
+}
+function restoreAutosave() {
+  try {
+    const raw = localStorage.getItem(LS_AUTOSAVE);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    if (!d.workflow || !d.workflow.length) return false;
+    workflow = d.workflow;
+    scenarioName = d.name || 'untitled scenario';
+    scenarioMeta = d.scenarioMeta || null;
+    const reid = list => list.forEach(n => {
+      n.id = uid();
+      // Backfill _wrapByName flag on any 'set' node that came from a Make
+      // SetVariable module (i.e. has a Make module starting with 'util:Set'
+      // OR is a 'set' that's NOT a datastore placeholder). This rescues
+      // workflows imported before the fix without forcing a re-import.
+      if (n.type === 'set' && !n._wrapByName && !n._datastorePlaceholder) {
+        const mod = n._make?.module || '';
+        if (mod.startsWith('util:Set') || !mod) n._wrapByName = true;
+      }
+      if (n.branches) n.branches.forEach(b => reid(b));
+    });
+    reid(workflow);
+    $('#scenario-name').textContent = scenarioName;
+    log('info', `Restored autosave (${countNodes(workflow)} modules).`);
+    return true;
+  } catch { return false; }
+}
+
+function defaultsFor(type) {
+  switch (type) {
+    case 'set':        return { name: 'data', value: '{\n  "hello": "world"\n}' };
+    case 'http':       return { method: 'GET', url: 'https://api.example.com', headers: [], params: [], body: '' };
+    case 'filter':     return { expression: 'input != null' };
+    case 'router':     return {};
+    case 'sleep':      return { ms: 1000 };
+    case 'iterator':   return { source: '{{1}}', maxIter: 100 };
+    case 'aggregator': return { mode: 'array' };
+  }
+  return {};
+}
+
+function makeNode(type, label) {
+  const n = {
+    id: uid(), type,
+    label: label || NODE_TYPES[type].name,
+    config: defaultsFor(type),
+  };
+  if (type === 'router') n.branches = [[], []];
+  // 'set' nodes wrap their output as { [name]: value } so that downstream
+  // {{N.varname}} references resolve like Make's util:SetVariable. Datastore
+  // 'set' nodes (created via Make import) explicitly clear this flag.
+  if (type === 'set') n._wrapByName = true;
+  return n;
+}
+
+// ============================================================
+//   ZOOM
+// ============================================================
+
+function setZoom(z, centerX, centerY) {
+  const wrap = $('#canvas-wrap');
+  const oldZoom = zoom;
+  zoom = Math.max(0.25, Math.min(2, z));
+  const canvas = $('#canvas');
+
+  if (centerX !== undefined && centerY !== undefined) {
+    // Keep the point under the cursor stationary
+    const rect = wrap.getBoundingClientRect();
+    const pointX = wrap.scrollLeft + (centerX - rect.left);
+    const pointY = wrap.scrollTop + (centerY - rect.top);
+    const ratio = zoom / oldZoom;
+    canvas.style.transform = `scale(${zoom})`;
+    wrap.scrollLeft = pointX * ratio - (centerX - rect.left);
+    wrap.scrollTop = pointY * ratio - (centerY - rect.top);
+  } else {
+    canvas.style.transform = `scale(${zoom})`;
+  }
+  $('#zoom-display').textContent = `${Math.round(zoom * 100)}%`;
+}
+
+$('#canvas-wrap').addEventListener('wheel', e => {
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    // Trackpad pinch gestures and Cmd+scroll both come through here with ctrlKey=true
+    const delta = -e.deltaY * 0.01;
+    setZoom(zoom * (1 + delta), e.clientX, e.clientY);
+  }
+}, { passive: false });
+
+$('#btn-zoom-in').onclick = () => setZoom(zoom * 1.2);
+$('#btn-zoom-out').onclick = () => setZoom(zoom / 1.2);
+$('#btn-zoom-fit').onclick = () => { setZoom(1); $('#canvas-wrap').scrollTo(0, 0); };
+
+// ============================================================
+//   MAKE BLUEPRINT IMPORTER
+// ============================================================
+
+const MAKE_OPS = {
+  exist:        a    => `(${a} !== undefined && ${a} !== null && ${a} !== '')`,
+  notexist:     a    => `(${a} === undefined || ${a} === null || ${a} === '')`,
+  empty:        a    => `(${a} === '' || ${a} == null)`,
+  notempty:     a    => `(${a} !== '' && ${a} != null)`,
+  equal:        (a, b) => `(String(${a}) == String(${b}))`,
+  notequal:     (a, b) => `(String(${a}) != String(${b}))`,
+  larger:       (a, b) => `(Number(${a}) > Number(${b}))`,
+  largerorequal:(a, b) => `(Number(${a}) >= Number(${b}))`,
+  smaller:      (a, b) => `(Number(${a}) < Number(${b}))`,
+  smallerorequal:(a, b)=> `(Number(${a}) <= Number(${b}))`,
+  'text:contain':    (a, b) => `String(${a}).includes(String(${b}))`,
+  'text:notcontain': (a, b) => `!String(${a}).includes(String(${b}))`,
+  'text:startwith':  (a, b) => `String(${a}).startsWith(String(${b}))`,
+  'text:endwith':    (a, b) => `String(${a}).endsWith(String(${b}))`,
+  'text:equal':      (a, b) => `(String(${a}) === String(${b}))`,
+  'text:notequal':   (a, b) => `(String(${a}) !== String(${b}))`,
+};
+
+function makeTplToFF(s) {
+  if (typeof s !== 'string') return s;
+  // Strip backticks around field names — Make uses them when names have spaces.
+  // Keep [] for array plucking (now supported by resolvePath).
+  return s.replace(/`/g, '');
+}
+
+function makeRefToJS(ref) {
+  return `$$ref(${JSON.stringify(makeTplToFF(String(ref)))})`;
+}
+
+function translateMakeFilter(filter) {
+  if (!filter || !filter.conditions) return 'true';
+  const orParts = filter.conditions.map(andGroup => {
+    const andParts = andGroup.map(cond => {
+      const op = cond.o;
+      const a = cond.a !== undefined ? String(cond.a) : '';
+      const aJs = a.includes('{{') ? makeRefToJS(a) : JSON.stringify(a);
+      let bJs = null;
+      if (cond.b !== undefined) {
+        const b = String(cond.b);
+        bJs = b.includes('{{') ? makeRefToJS(b) : JSON.stringify(b);
+      }
+      const builder = MAKE_OPS[op];
+      if (!builder) return `/* unsupported op: ${op} */ true`;
+      return bJs ? builder(aJs, bJs) : builder(aJs);
+    });
+    return '(' + andParts.join(' && ') + ')';
+  });
+  return orParts.join(' || ');
+}
+
+function mapAirtableFields(record) {
+  const out = {};
+  for (const [k, v] of Object.entries(record)) {
+    if (Array.isArray(v)) out[k] = v.map(x => typeof x === 'string' ? makeTplToFF(x) : x);
+    else if (typeof v === 'string') out[k] = makeTplToFF(v);
+    else out[k] = v;
+  }
+  return out;
+}
+
+function mapMakeModule(m) {
+  const designerName = m.metadata?.designer?.name;
+  const node = {
+    id: uid(),
+    type: 'unknown',
+    label: designerName || `[${m.module}] #${m.id}`,
+    config: {},
+    _make: {
+      id: m.id,
+      module: m.module,
+      version: m.version,
+      mapper: m.mapper ? JSON.parse(JSON.stringify(m.mapper)) : null,
+      parameters: m.parameters ? JSON.parse(JSON.stringify(m.parameters)) : {},
+      metadata: m.metadata ? JSON.parse(JSON.stringify(m.metadata)) : {},
+    },
+  };
+
+  if (m.filter) {
+    node.nodeFilter = {
+      expression: translateMakeFilter(m.filter),
+      _make: JSON.parse(JSON.stringify(m.filter)),
+    };
+  }
+
+  switch (m.module) {
+    case 'http:ActionSendData':
+    case 'http:ActionSendDataAdv': {
+      node.type = 'http';
+      node.label = designerName || 'HTTP Request';
+      node.config = {
+        method: (m.mapper.method || 'GET').toUpperCase(),
+        url: makeTplToFF(m.mapper.url || ''),
+        headers: (m.mapper.headers || []).map(h => ({
+          k: makeTplToFF(h.name), v: makeTplToFF(h.value),
+        })),
+        params: (m.mapper.qs || []).map(q => ({
+          k: makeTplToFF(q.name), v: makeTplToFF(q.value),
+        })),
+        body: makeTplToFF(m.mapper.data || ''),
+      };
+      break;
+    }
+    case 'airtable:ActionSearchRecords': {
+      node.type = 'http';
+      node.label = designerName || `Airtable: Search ${m.mapper.table || ''}`;
+      const base = m.mapper.base, table = m.mapper.table;
+      const formula = makeTplToFF(m.mapper.formula || '');
+      const max = String(m.mapper.maxRecords || 100);
+      node.config = {
+        method: 'GET',
+        url: `https://api.airtable.com/v0/${base}/${table}`,
+        headers: [{ k: 'Authorization', v: 'Bearer {{AIRTABLE_PAT}}' }],
+        params: [
+          ...(formula ? [{ k: 'filterByFormula', v: formula }] : []),
+          { k: 'maxRecords', v: max },
+        ],
+        body: '',
+      };
+      break;
+    }
+    case 'airtable:ActionCreateRecord': {
+      node.type = 'http';
+      node.label = designerName || `Airtable: Create in ${m.mapper.table || ''}`;
+      const base = m.mapper.base, table = m.mapper.table;
+      const fields = mapAirtableFields(m.mapper.record || {});
+      node.config = {
+        method: 'POST',
+        url: `https://api.airtable.com/v0/${base}/${table}`,
+        headers: [
+          { k: 'Authorization', v: 'Bearer {{AIRTABLE_PAT}}' },
+          { k: 'Content-Type', v: 'application/json' },
+        ],
+        params: [],
+        body: JSON.stringify({ fields, typecast: !!m.mapper.typecast }, null, 2),
+      };
+      break;
+    }
+    case 'airtable:ActionUpdateRecords': {
+      node.type = 'http';
+      node.label = designerName || `Airtable: Update ${m.mapper.table || ''}`;
+      const base = m.mapper.base, table = m.mapper.table;
+      const recId = makeTplToFF(m.mapper.id || '');
+      const { id, ...rest } = m.mapper.record || {};
+      const fields = mapAirtableFields(rest);
+      node.config = {
+        method: 'PATCH',
+        url: `https://api.airtable.com/v0/${base}/${table}/${recId}`,
+        headers: [
+          { k: 'Authorization', v: 'Bearer {{AIRTABLE_PAT}}' },
+          { k: 'Content-Type', v: 'application/json' },
+        ],
+        params: [],
+        body: JSON.stringify({ fields, typecast: !!m.mapper.typecast }, null, 2),
+      };
+      break;
+    }
+    case 'airtable:upsertRecord': {
+      node.type = 'http';
+      node.label = designerName || `Airtable: Upsert ${m.mapper.table || ''}`;
+      const base = m.mapper.base, table = m.mapper.table;
+      const recId = makeTplToFF(m.mapper.recordId || '');
+      const fields = mapAirtableFields(m.mapper.record || {});
+      node.config = {
+        method: 'PATCH',
+        url: `https://api.airtable.com/v0/${base}/${table}/${recId}`,
+        headers: [
+          { k: 'Authorization', v: 'Bearer {{AIRTABLE_PAT}}' },
+          { k: 'Content-Type', v: 'application/json' },
+        ],
+        params: [],
+        body: JSON.stringify({ fields, typecast: !!m.mapper.typecast }, null, 2),
+      };
+      break;
+    }
+    case 'airtable:makeApiCall': {
+      node.type = 'http';
+      node.label = designerName || `Airtable: ${m.mapper?.method || 'GET'} raw`;
+      const path = makeTplToFF(m.mapper.url || '');
+      node.config = {
+        method: (m.mapper.method || 'GET').toUpperCase(),
+        url: `https://api.airtable.com/${path.replace(/^\//, '')}`,
+        headers: [
+          { k: 'Authorization', v: 'Bearer {{AIRTABLE_PAT}}' },
+          ...((m.mapper.headers || []).map(h => ({
+            k: makeTplToFF(h.key || h.name),
+            v: makeTplToFF(h.value),
+          }))),
+        ],
+        params: [],
+        body: makeTplToFF(m.mapper.body || ''),
+      };
+      break;
+    }
+    case 'builtin:BasicRouter': {
+      node.type = 'router';
+      node.label = designerName || 'Router';
+      node.config = {};
+      break;
+    }
+    case 'builtin:BasicFeeder': {
+      node.type = 'iterator';
+      node.label = designerName || 'Iterator';
+      node.config = { source: makeTplToFF(m.mapper.array || ''), maxIter: 100 };
+      break;
+    }
+    case 'builtin:BasicAggregator':
+    case 'util:TextAggregator':
+    case 'util:NumericAggregator': {
+      node.type = 'aggregator';
+      node.label = designerName || 'Aggregator';
+      const mode = m.module === 'util:NumericAggregator' ? 'sum'
+                : m.module === 'util:TextAggregator' ? 'text'
+                : 'array';
+      node.config = {
+        mode,
+        // value template is what's collected per iteration (TextAggregator uses this)
+        value: typeof m.mapper?.value === 'string' ? makeTplToFF(m.mapper.value) : '',
+        // Which feeder this aggregator pairs with (Make module id)
+        feederId: m.parameters?.feeder ?? null,
+        separator: m.parameters?.otherRowSeparator ?? (m.parameters?.rowSeparator === 'other' ? ', ' : '\n'),
+      };
+      break;
+    }
+    case 'util:SetVariable2':
+    case 'util:SetVariable':
+    case 'util:SetVariables': {
+      node.type = 'set';
+      node.label = designerName || `Set ${m.mapper?.name || 'variable'}`;
+      const v = m.mapper?.value;
+      node.config = {
+        name: m.mapper?.name || 'variable',
+        value: typeof v === 'string' ? makeTplToFF(v) : JSON.stringify(v ?? '', null, 2),
+      };
+      // Mark so the runtime wraps the result as { [name]: value } — this
+      // matches Make's SetVariable semantics where downstream {{N.varname}}
+      // looks up the variable by name. Datastore 'set' nodes (which are
+      // also type:'set') intentionally do NOT have this flag — they return
+      // the raw record object so {{N.fieldname}} works directly.
+      node._wrapByName = true;
+      break;
+    }
+    case 'datastore:GetRecord':
+    case 'datastore:AddReplaceRecord':
+    case 'datastore:UpdateRecord':
+    case 'datastore:DeleteRecord': {
+      node.type = 'set';
+      node.label = designerName || `Datastore: ${m.module.split(':')[1]}`;
+      // Return a JSON object so downstream {{N.fieldname}} references work.
+      // Common datastore use is auth tokens — pre-fill common field names that
+      // map to vault keys. User can edit if their field names differ.
+      const dsId = m.parameters?.datastore || 'unknown';
+      node.config = {
+        name: 'record',
+        value: JSON.stringify({
+          'Access Token': '{{UNITE_TOKEN}}',
+          token: '{{UNITE_TOKEN}}',
+          _datastoreId: dsId,
+          _key: m.mapper?.key || '',
+        }, null, 2),
+      };
+      // Mark for inspector to show a special hint
+      node._datastorePlaceholder = true;
+      break;
+    }
+    case 'builtin:BasicSleep':
+    case 'helper:Sleep': {
+      node.type = 'sleep';
+      node.label = designerName || 'Sleep';
+      node.config = { ms: (Number(m.mapper?.delay) || 1) * 1000 };
+      break;
+    }
+    case 'helper:JSONParseJSON':
+    case 'json:ParseJSON': {
+      node.type = 'set';
+      node.label = designerName || 'Parse JSON';
+      node.config = { name: 'parsed', value: makeTplToFF(m.mapper?.json || '') };
+      break;
+    }
+    default: {
+      node.type = 'unknown';
+      node.label = designerName || m.module;
+      node.config = { rawMapper: JSON.stringify(m.mapper, null, 2) };
+    }
+  }
+  return node;
+}
+
+function walkMakeFlow(flow) {
+  const nodes = [];
+  for (const m of flow) {
+    const node = mapMakeModule(m);
+    if (m.module === 'builtin:BasicRouter' && Array.isArray(m.routes)) {
+      node.branches = m.routes.map(r => walkMakeFlow(r.flow || []));
+    }
+    nodes.push(node);
+  }
+  return nodes;
+}
+
+function importMakeBlueprint(json) {
+  let bp = json;
+  if (bp.blueprint) bp = bp.blueprint;
+  if (!bp.flow || !Array.isArray(bp.flow)) {
+    throw new Error('Not a Make blueprint (no flow array found).');
+  }
+  workflow = walkMakeFlow(bp.flow);
+  scenarioName = bp.name || json.name || 'imported scenario';
+  scenarioMeta = {
+    name: bp.name,
+    metadata: bp.metadata,
+    scheduling: bp.scheduling,
+  };
+  importMode = 'make';
+  selectedId = null;
+  $('#scenario-name').textContent = scenarioName;
+  render();
+  // Synchronous write so re-imports always overwrite any prior autosave
+  // immediately — no 800ms window where stale state could be preserved.
+  try {
+    localStorage.setItem(LS_AUTOSAVE, JSON.stringify({
+      name: scenarioName, workflow, scenarioMeta, ts: Date.now(),
+    }));
+  } catch {}
+  const total = countNodes(workflow);
+
+  // Defensive scan: warn if any Airtable write body has literal field names
+  // (anything other than fldXXXXXXXXXXXXXX) — these are the keys that produce
+  // UNKNOWN_FIELD_NAME errors at runtime.
+  const stale = findNonFieldIdAirtableKeys(workflow);
+  if (stale.length) {
+    log('warn', `Found ${stale.length} Airtable field key(s) that are not field IDs and may fail at runtime: <code>${stale.slice(0, 5).map(s => escapeHtml(s)).join('</code>, <code>')}</code>${stale.length > 5 ? ` (+${stale.length - 5} more)` : ''}`);
+  }
+
+  // Detect what credentials are needed and pre-seed vault
+  const needs = detectNeededSecrets(workflow);
+  const existing = loadSecrets();
+  let added = false;
+  for (const k of needs) {
+    if (!(k in existing)) { existing[k] = ''; added = true; }
+  }
+  if (added) saveSecrets(existing);
+
+  log('ok', `Imported Make blueprint: <code>${escapeHtml(scenarioName)}</code> — ${total} modules`);
+  if (needs.length) {
+    log('warn', `This workflow needs these credentials in the 🔑 Vault: <code>${needs.join('</code>, <code>')}</code>`);
+  }
+}
+
+// Walk the workflow and return any Airtable HTTP body keys that are NOT
+// fldXXXXXXXXXXXXXX field IDs. These are the keys that produce
+// UNKNOWN_FIELD_NAME errors at runtime when the field happens to not exist
+// in the target table by that exact name (case-, space-, or punctuation-sensitive).
+function findNonFieldIdAirtableKeys(nodes) {
+  const stale = [];
+  const FIELD_ID = /^fld[A-Za-z0-9]{14}$/;
+  function visit(n) {
+    const url = n?.config?.url || '';
+    if (n?.type === 'http' && /\bapi\.airtable\.com\b/.test(url)) {
+      const body = n?.config?.body;
+      if (typeof body === 'string' && body.trim().startsWith('{')) {
+        try {
+          const parsed = JSON.parse(body);
+          const fields = parsed?.fields;
+          if (fields && typeof fields === 'object') {
+            for (const k of Object.keys(fields)) {
+              if (!FIELD_ID.test(k)) stale.push(k);
+            }
+          }
+        } catch {}
+      }
+    }
+    if (n?.branches) for (const b of n.branches) for (const c of b) visit(c);
+  }
+  for (const n of nodes) visit(n);
+  return stale;
+}
+
+// Walk the workflow to find which vault secret keys (UPPER_SNAKE_CASE) are referenced
+function detectNeededSecrets(nodes) {
+  const found = new Set();
+  const re = /\{\{([A-Z][A-Z0-9_]*)(\.|\}\})/g;
+  function visit(n) {
+    const blob = JSON.stringify(n.config) + ' ' + JSON.stringify(n._make?.mapper || '');
+    let m;
+    while ((m = re.exec(blob))) found.add(m[1]);
+    if (n.branches) for (const b of n.branches) for (const c of b) visit(c);
+  }
+  for (const n of nodes) visit(n);
+  // Filter out keys already present (non-empty) in the vault
+  const vault = (typeof loadSecrets === 'function') ? loadSecrets() : {};
+  const missing = [...found].filter(k => !vault[k] || !String(vault[k]).trim());
+  return missing;
+}
+
+function countNodes(nodes) {
+  let n = 0;
+  for (const x of nodes) {
+    n++;
+    if (x.branches) for (const b of x.branches) n += countNodes(b);
+  }
+  return n;
+}
+
+// ============================================================
+//   FLOWFORGE → MAKE BLUEPRINT EXPORTER
+// ============================================================
+
+let exportIdCounter = 1;
+
+function exportToMake() {
+  exportIdCounter = 1;
+  const flow = workflow.map((n, i) => nodeToMakeModule(n, i * 300, 0));
+  return {
+    name: scenarioName,
+    flow,
+    metadata: scenarioMeta?.metadata || {
+      instant: false, version: 1,
+      designer: { orphans: [] },
+      scenario: {
+        roundtrips: 1, maxErrors: 3, autoCommit: true,
+        autoCommitTriggerLast: true, sequential: false,
+        confidential: false, dataloss: false, dlq: false, freshVariables: false,
+      },
+    },
+    scheduling: scenarioMeta?.scheduling || { type: 'indefinitely', interval: 900 },
+  };
+}
+
+function nodeToMakeModule(node, x, y) {
+  if (node._make) {
+    const m = {
+      id: node._make.id || exportIdCounter++,
+      module: node._make.module,
+      version: node._make.version || 1,
+      mapper: rebuildMakeMapper(node),
+      parameters: node._make.parameters || {},
+      metadata: node._make.metadata || { designer: { x, y } },
+    };
+    if (node.nodeFilter?._make) m.filter = node.nodeFilter._make;
+    if (node.type === 'router' && node.branches) {
+      m.routes = node.branches.map(b => ({
+        flow: b.map((n, i) => nodeToMakeModule(n, x + 300 + i * 300, y)),
+      }));
+    }
+    return m;
+  }
+  const id = exportIdCounter++;
+  const designer = { designer: { x, y, name: node.label } };
+  switch (node.type) {
+    case 'http': return {
+      id, module: 'http:ActionSendData', version: 3, metadata: designer,
+      mapper: {
+        method: (node.config.method || 'GET').toLowerCase(),
+        url: node.config.url || '',
+        headers: (node.config.headers || []).map(h => ({ name: h.k, value: h.v })),
+        qs: (node.config.params || []).map(p => ({ name: p.k, value: p.v })),
+        data: node.config.body || '',
+        bodyType: 'raw', contentType: 'application/json',
+        parseResponse: true, followRedirect: true, gzip: true,
+      },
+      parameters: { handleErrors: true },
+    };
+    case 'set': return {
+      id, module: 'util:SetVariable2', version: 1, metadata: designer,
+      mapper: { name: node.config.name, value: node.config.value, scope: 'roundtrip' },
+      parameters: {},
+    };
+    case 'router': return {
+      id, module: 'builtin:BasicRouter', version: 1, metadata: designer,
+      mapper: null, parameters: {},
+      routes: (node.branches || []).map(b => ({
+        flow: b.map((n, i) => nodeToMakeModule(n, x + 300 + i * 300, y)),
+      })),
+    };
+    case 'iterator': return {
+      id, module: 'builtin:BasicFeeder', version: 1, metadata: designer,
+      mapper: { array: node.config.source }, parameters: {},
+    };
+    case 'aggregator': return {
+      id, module: 'builtin:BasicAggregator', version: 1, metadata: designer,
+      mapper: {}, parameters: {},
+    };
+    case 'sleep': return {
+      id, module: 'builtin:BasicSleep', version: 1, metadata: designer,
+      mapper: { delay: Math.max(1, Math.round((node.config.ms || 1000) / 1000)) },
+      parameters: {},
+    };
+    case 'filter': return {
+      id, module: 'util:SetVariable2', version: 1, metadata: designer,
+      mapper: { name: '_filter', value: '{{1}}', scope: 'roundtrip' },
+      parameters: {},
+    };
+    default: return {
+      id, module: 'unknown:Unknown', version: 1, metadata: designer,
+      mapper: {}, parameters: {},
+    };
+  }
+}
+
+function rebuildMakeMapper(node) {
+  const orig = node._make?.mapper ? JSON.parse(JSON.stringify(node._make.mapper)) : {};
+  switch (node._make?.module) {
+    case 'http:ActionSendData':
+    case 'http:ActionSendDataAdv':
+      orig.method = (node.config.method || 'GET').toLowerCase();
+      orig.url = node.config.url;
+      orig.headers = (node.config.headers || []).map(h => ({ name: h.k, value: h.v }));
+      orig.qs = (node.config.params || []).map(p => ({ name: p.k, value: p.v }));
+      orig.data = node.config.body || '';
+      return orig;
+    case 'builtin:BasicFeeder':
+      orig.array = node.config.source;
+      return orig;
+    case 'util:SetVariable2':
+    case 'util:SetVariable':
+      orig.name = node.config.name;
+      orig.value = node.config.value;
+      return orig;
+    default:
+      return orig;
+  }
+}
+
+// ============================================================
+//   RENDERER
+// ============================================================
+
+let stepNumber;
+
+function maxMakeId(nodes) {
+  let m = 0;
+  for (const n of nodes) {
+    if (n._make?.id && n._make.id > m) m = n._make.id;
+    if (n.branches) for (const b of n.branches) m = Math.max(m, maxMakeId(b));
+  }
+  return m;
+}
+
+function render() {
+  const canvas = $('#canvas');
+  const empty = $('#empty-state');
+  [...canvas.children].forEach(c => { if (c.id !== 'empty-state') c.remove(); });
+
+  if (workflow.length === 0) {
+    empty.style.display = 'grid';
+    renderInspector();
+    return;
+  }
+  empty.style.display = 'none';
+
+  stepNumber = maxMakeId(workflow);
+  const wrap = document.createElement('div');
+  wrap.style.minWidth = 'max-content';
+  wrap.appendChild(renderChain(workflow, true));
+  canvas.appendChild(wrap);
+  renderInspector();
+}
+
+function renderChain(nodes, isTopLevel = false) {
+  const chain = document.createElement('div');
+  chain.className = 'chain';
+  nodes.forEach((node, i) => {
+    if (i > 0) {
+      const c = document.createElement('div');
+      c.className = 'connector';
+      chain.appendChild(c);
+    }
+    chain.appendChild(renderNode(node, nodes));
+  });
+  if (isTopLevel) {
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-node-btn';
+    addBtn.textContent = '+';
+    addBtn.onclick = () => openAddModal(nodes);
+    chain.appendChild(addBtn);
+  }
+  return chain;
+}
+
+function renderNode(node, parentList) {
+  const wrap = document.createElement('div');
+  wrap.style.display = 'flex';
+  wrap.style.flexDirection = 'column';
+  wrap.style.alignItems = 'flex-start';
+
+  const num = node._make?.id ?? ++stepNumber;
+  node._stepNum = num;
+
+  const el = document.createElement('div');
+  el.className = 'node';
+  el.dataset.id = node.id;
+  if (selectedId === node.id) el.classList.add('selected');
+  if (node._lastStatus === 'ok') el.classList.add('success');
+  if (node._lastStatus === 'err') el.classList.add('error');
+
+  const meta = NODE_TYPES[node.type] || NODE_TYPES.unknown;
+  const appClass = makeAppClass(node);
+
+  el.innerHTML = `
+    <button class="node-delete" title="Delete">×</button>
+    <div class="node-bubble palette-icon type-${node.type} ${appClass}">
+      ${meta.icon}
+      <div class="node-num">${num}</div>
+      <div class="node-status"></div>
+      ${node.nodeFilter ? `<div class="node-filter-dot" title="Filter: ${escapeAttr(node.nodeFilter.expression)}"></div>` : ''}
+    </div>
+    <div class="node-label">${escapeHtml(node.label)}</div>
+    <div class="node-sub">${escapeHtml(nodeSubtitle(node))}</div>
+  `;
+
+  el.onclick = e => {
+    if (e.target.classList.contains('node-delete')) return;
+    e.stopPropagation();
+    selectedId = node.id;
+    render();
+  };
+  el.ondblclick = e => {
+    e.stopPropagation();
+    if (e.target.classList.contains('node-delete')) return;
+    selectedId = node.id;
+    render();
+    runSingleNode(node);
+  };
+  el.querySelector('.node-delete').onclick = e => {
+    e.stopPropagation();
+    const idx = parentList.indexOf(node);
+    if (idx >= 0) parentList.splice(idx, 1);
+    if (selectedId === node.id) selectedId = null;
+    render();
+    scheduleAutosave();
+  };
+
+  wrap.appendChild(el);
+
+  if (node.type === 'router' && node.branches) {
+    const branchesEl = document.createElement('div');
+    branchesEl.className = 'branches';
+    node.branches.forEach((branch, i) => {
+      const row = document.createElement('div');
+      row.className = 'branch-row';
+      const lbl = document.createElement('div');
+      lbl.className = 'branch-label';
+      lbl.textContent = `Route ${i + 1}`;
+      row.appendChild(lbl);
+
+      const branchChain = document.createElement('div');
+      branchChain.className = 'chain';
+      branch.forEach((n, j) => {
+        if (j > 0) {
+          const c = document.createElement('div');
+          c.className = 'connector';
+          branchChain.appendChild(c);
+        }
+        branchChain.appendChild(renderNode(n, branch));
+      });
+      const addBtn = document.createElement('button');
+      addBtn.className = 'add-node-btn';
+      addBtn.textContent = '+';
+      addBtn.onclick = e => { e.stopPropagation(); openAddModal(branch); };
+      branchChain.appendChild(addBtn);
+
+      const actions = document.createElement('div');
+      actions.className = 'route-actions';
+      const delBranch = document.createElement('button');
+      delBranch.className = 'route-del';
+      delBranch.title = 'Delete this route';
+      delBranch.textContent = '×';
+      delBranch.onclick = e => {
+        e.stopPropagation();
+        if (confirm(`Delete Route ${i + 1}?`)) {
+          node.branches.splice(i, 1);
+          render();
+          scheduleAutosave();
+        }
+      };
+      actions.appendChild(delBranch);
+      branchChain.appendChild(actions);
+      row.appendChild(branchChain);
+      branchesEl.appendChild(row);
+    });
+
+    const addBranch = document.createElement('button');
+    addBranch.className = 'add-branch-btn';
+    addBranch.textContent = '+ add route';
+    addBranch.onclick = e => {
+      e.stopPropagation();
+      node.branches.push([]);
+      render();
+      scheduleAutosave();
+    };
+    branchesEl.appendChild(addBranch);
+
+    wrap.appendChild(branchesEl);
+  }
+
+  return wrap;
+}
+
+function nodeSubtitle(node) {
+  switch (node.type) {
+    case 'set':        return `${node.config.name} = …`;
+    case 'http':       {
+      const paramCount = (node.config.params || []).filter(p => p.k).length;
+      const parts = [`${node.config.method} ${truncate(shortUrl(node.config.url), 32)}`];
+      if (paramCount) parts.push(`+${paramCount} params`);
+      return parts.join(' ');
+    }
+    case 'filter':     return truncate(node.config.expression, 36);
+    case 'router':     return `${(node.branches || []).length} routes`;
+    case 'sleep':      return `${node.config.ms} ms`;
+    case 'iterator':   {
+      const src = `over ${truncate(node.config.source, 24)}`;
+      if (Array.isArray(node._lastOutput)) return `${src} · ${node._lastOutput.length} items`;
+      return src;
+    }
+    case 'aggregator': return `collect → ${node.config.mode}`;
+    case 'unknown':    return node._make?.module || 'unknown';
+  }
+  return '';
+}
+function shortUrl(u) {
+  if (!u) return '';
+  try { const x = new URL(u); return x.hostname + x.pathname; }
+  catch { return u; }
+}
+function truncate(s, n) {
+  if (!s) return '—';
+  s = String(s);
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
+// ============================================================
+//   INSPECTOR
+// ============================================================
+
+function findNodeById(id, list = workflow) {
+  for (const n of list) {
+    if (n.id === id) return n;
+    if (n.branches) for (const b of n.branches) {
+      const r = findNodeById(id, b);
+      if (r) return r;
+    }
+  }
+  return null;
+}
+
+// ============================================================
+//  MAKE-STYLE TREE INSPECTOR (INPUT / OUTPUT)
+//  Renders nested JSON as an expandable tree with type tags
+//  ('Collection', 'Array', 'empty'), like Make's bubble inspector.
+// ============================================================
+
+function describeValueType(v) {
+  if (v === null || v === undefined) return { kind: 'empty', text: 'empty' };
+  if (typeof v === 'string') {
+    if (v === '') return { kind: 'empty', text: 'empty' };
+    return { kind: 'string', text: v };
+  }
+  if (Array.isArray(v)) {
+    if (v.length === 0) return { kind: 'empty', text: 'empty Array' };
+    return { kind: 'array', text: '(Array)', count: v.length };
+  }
+  if (typeof v === 'object') {
+    const keys = Object.keys(v);
+    if (keys.length === 0) return { kind: 'empty', text: 'empty Collection' };
+    return { kind: 'object', text: '(Collection)', count: keys.length };
+  }
+  if (typeof v === 'boolean') return { kind: 'bool', text: String(v) };
+  if (typeof v === 'number') return { kind: 'number', text: String(v) };
+  return { kind: 'string', text: String(v) };
+}
+
+let _tnIdCounter = 0;
+function _tnId() { return 'tn' + (++_tnIdCounter).toString(36); }
+
+function renderTreeNode(label, value, depth, startCollapsed) {
+  const desc = describeValueType(value);
+  const indent = depth * 14;
+  const labelEsc = escapeHtml(String(label));
+
+  if (desc.kind === 'array' || desc.kind === 'object') {
+    const id = _tnId();
+    let entries;
+    if (desc.kind === 'array') {
+      entries = value.map((v, i) => [String(i + 1), v]);
+    } else {
+      entries = Object.entries(value);
+    }
+    // Auto-collapse very large branches (>40 children) so the tree opens fast
+    const shouldCollapse = startCollapsed || entries.length > 40 || depth > 5;
+    const meta = `<span class="tn-meta">${entries.length}</span>`;
+    const childHtml = entries
+      .map(([k, v]) => renderTreeNode(k, v, depth + 1, depth >= 2 && entries.length > 8))
+      .join('');
+    const searchText = (labelEsc + ' ' + desc.text).toLowerCase();
+    return `<div class="tn-group" data-tn-text="${escapeAttr(searchText)}">
+      <div class="tn-row tn-expandable" data-target="${id}" style="padding-left:${indent}px">
+        <span class="tn-toggle ${shouldCollapse ? 'collapsed' : 'expanded'}"></span>
+        <span class="tn-label">${labelEsc}:</span>
+        <span class="tn-type">${desc.text}</span>
+        ${meta}
+      </div>
+      <div class="tn-children${shouldCollapse ? ' collapsed' : ''}" id="${id}">${childHtml}</div>
+    </div>`;
+  }
+
+  // Primitive
+  const searchText = (labelEsc + ' ' + (desc.text || '')).toLowerCase();
+  if (desc.kind === 'empty') {
+    return `<div class="tn-row" data-tn-text="${escapeAttr(searchText)}" style="padding-left:${indent}px">
+      <span class="tn-toggle disabled"></span>
+      <span class="tn-label">${labelEsc}:</span>
+      <span class="tn-empty">empty</span>
+    </div>`;
+  }
+  return `<div class="tn-row" data-tn-text="${escapeAttr(searchText)}" style="padding-left:${indent}px">
+    <span class="tn-toggle disabled"></span>
+    <span class="tn-label">${labelEsc}:</span>
+    <span class="tn-value tn-${desc.kind}">${escapeHtml(desc.text)}</span>
+  </div>`;
+}
+
+// Render value as a tree. If value is an array of items at the top level,
+// render each as "Bundle 1", "Bundle 2", etc., matching Make's bundle layout.
+function renderTree(rootValue, rootLabel) {
+  if (rootValue === undefined || rootValue === null) {
+    return '<div class="tree-empty">No data captured.</div>';
+  }
+  if (Array.isArray(rootValue)) {
+    if (rootValue.length === 0) return '<div class="tree-empty">empty Array</div>';
+    if (rootValue.length === 1) {
+      return renderTreeNode(rootLabel || 'Bundle 1', rootValue[0], 0, false);
+    }
+    return rootValue.map((v, i) => renderTreeNode(`Bundle ${i + 1}`, v, 0, i > 0)).join('');
+  }
+  return renderTreeNode(rootLabel || 'Bundle 1', rootValue, 0, false);
+}
+
+function attachTreeBehavior(rootEl, searchInputEl) {
+  if (!rootEl) return;
+  // Toggle expand/collapse
+  rootEl.addEventListener('click', e => {
+    const row = e.target.closest('.tn-expandable');
+    if (!row || !rootEl.contains(row)) return;
+    const childEl = rootEl.querySelector('#' + row.dataset.target);
+    const toggle = row.querySelector('.tn-toggle');
+    if (!childEl || !toggle) return;
+    const wasCollapsed = childEl.classList.contains('collapsed');
+    childEl.classList.toggle('collapsed', !wasCollapsed);
+    toggle.classList.toggle('collapsed', !wasCollapsed);
+    toggle.classList.toggle('expanded', wasCollapsed);
+  });
+  if (!searchInputEl) return;
+  searchInputEl.addEventListener('input', () => {
+    const q = searchInputEl.value.trim().toLowerCase();
+    // Reset all hidden/match flags
+    rootEl.querySelectorAll('.tn-hidden').forEach(el => el.classList.remove('tn-hidden'));
+    rootEl.querySelectorAll('.tn-match').forEach(el => el.classList.remove('tn-match'));
+    if (!q) return;
+    // Hide everything, then walk up from each match restoring visibility
+    rootEl.querySelectorAll('.tn-row, .tn-group').forEach(el => el.classList.add('tn-hidden'));
+    const matchEls = rootEl.querySelectorAll('[data-tn-text]');
+    matchEls.forEach(el => {
+      if (!el.dataset.tnText.includes(q)) return;
+      el.classList.add('tn-match');
+      // Reveal this element + ancestors + descendants
+      let cur = el;
+      while (cur && cur !== rootEl) {
+        cur.classList.remove('tn-hidden');
+        // Open any collapsed parent so the match is actually visible
+        if (cur.classList && cur.classList.contains('tn-children')) {
+          cur.classList.remove('collapsed');
+        }
+        cur = cur.parentElement;
+      }
+      el.querySelectorAll('.tn-row, .tn-group, .tn-children')
+        .forEach(c => { c.classList.remove('tn-hidden'); c.classList.remove('collapsed'); });
+      // Sync toggle icons in this subtree
+      el.parentElement?.querySelectorAll('.tn-toggle.collapsed')
+        .forEach(t => { t.classList.remove('collapsed'); t.classList.add('expanded'); });
+    });
+  });
+}
+
+function renderInspector() {
+  const inspector = $('#inspector');
+  const node = selectedId ? findNodeById(selectedId) : null;
+  if (!node) {
+    inspector.innerHTML = `<div class="no-selection">
+      <div><div class="icon">⌖</div>Select a module to configure.<br>
+      <span style="font-size:10px;">Double-click a module to run that step alone.</span></div></div>`;
+    return;
+  }
+
+  const meta = NODE_TYPES[node.type] || NODE_TYPES.unknown;
+
+  let header = `
+    <div class="insp-header">
+      <h2>${escapeHtml(node.label)}</h2>
+      <div class="subtitle">${meta.name}${node._make ? ' • from Make' : ''}</div>
+    </div>
+    <div class="insp-actions">
+      <button class="btn btn-primary btn-sm" id="insp-run-one">▶ Run this step</button>
+      <button class="btn btn-ghost btn-sm" id="insp-clear-output">Clear output</button>
+    </div>`;
+
+  let body = '<div class="insp-body">';
+
+  if (node._make) {
+    body += `<div class="make-info">
+      Make: <code>${escapeHtml(node._make.module)}</code> · id ${node._make.id}
+    </div>`;
+  }
+
+  body += field('Label', `<input type="text" data-k="_label" value="${escapeAttr(node.label)}">`);
+
+  if (node.nodeFilter) {
+    body += `<div class="field">
+      <label>Inbound Filter (translated from Make)</label>
+      <textarea data-k="_filter" class="mono">${escapeHtml(node.nodeFilter.expression)}</textarea>
+      <div class="hint">JS expression. Has <code>$$ref('{{N.field}}')</code>, <code>input</code>, <code>steps</code>. Truthy = pass.</div>
+    </div>`;
+  }
+
+  switch (node.type) {
+    case 'set':
+      if (node._datastorePlaceholder) {
+        body += `<div class="make-info" style="background:rgba(255,180,84,0.1);color:var(--accent);">
+          📌 This was a Datastore lookup in Make. The value below is a JSON object so downstream <code>{{${node._stepNum}.fieldname}}</code> references work. Add your token to the 🔑 Vault as <code>UNITE_TOKEN</code> (or edit this directly).
+        </div>`;
+      }
+      body += field('Variable Name', `<input type="text" data-k="name" class="mono" value="${escapeAttr(node.config.name)}">`);
+      body += field('Value', `<textarea data-k="value" class="mono" style="min-height:140px;">${escapeHtml(node.config.value)}</textarea>`,
+        `Reference downstream as <code>{{${node._stepNum || '?'}.fieldname}}</code>`);
+      break;
+    case 'http':
+      body += field('Method', `<select data-k="method">${
+        ['GET','POST','PUT','PATCH','DELETE'].map(m =>
+          `<option ${m===node.config.method?'selected':''}>${m}</option>`).join('')
+      }</select>`);
+      body += field('URL', `<input type="text" data-k="url" class="mono" value="${escapeAttr(node.config.url)}">`,
+        'Templates like <code>{{1.foo}}</code> (step ref) or <code>{{AIRTABLE_PAT}}</code> (vault) are resolved at runtime.');
+      body += `<div class="field"><label>Query Params</label><div id="kv-params"></div>
+        <button class="kv-add" id="kv-params-add">+ Add Param</button>
+        <div class="hint">Values are URL-encoded after template resolution. Use this for things like <code>filterByFormula</code>.</div></div>`;
+      body += `<div class="field"><label>Headers</label><div id="kv-headers"></div>
+        <button class="kv-add" id="kv-headers-add">+ Add Header</button></div>`;
+      if (['POST','PUT','PATCH'].includes(node.config.method)) {
+        body += field('Body', `<textarea data-k="body" class="mono" style="min-height:140px;">${escapeHtml(node.config.body || '')}</textarea>`);
+      }
+      body += `<div class="field">
+        <button class="btn btn-ghost btn-sm" id="btn-preview-resolved">👁 Preview resolved request</button>
+        <div class="hint">See what URL/body will actually be sent with current step outputs substituted.</div>
+      </div>`;
+      break;
+    case 'filter':
+      body += field('Condition', `<textarea data-k="expression" class="mono">${escapeHtml(node.config.expression)}</textarea>`,
+        'JS expression with <code>input</code> and <code>steps[N]</code>. Stops if falsy.');
+      break;
+    case 'router':
+      body += `<div class="field"><div class="hint">${(node.branches || []).length} routes. Each runs as its own sub-flow with the router's input. Add modules to a route on the canvas.</div></div>`;
+      break;
+    case 'sleep':
+      body += field('Delay (ms)', `<input type="number" data-k="ms" min="0" value="${node.config.ms}">`);
+      break;
+    case 'iterator':
+      body += field('Array source', `<input type="text" data-k="source" class="mono" value="${escapeAttr(node.config.source)}">`,
+        `Inside the loop, <code>{{${node._stepNum}.field}}</code> gives the current item's field.`);
+      body += field('Max iterations', `<input type="number" data-k="maxIter" min="1" max="10000" value="${node.config.maxIter || 100}">`,
+        'Safety cap. Lower it if you want to test on a small sample.');
+      break;
+    case 'aggregator':
+      body += field('Mode', `<select data-k="mode">
+        <option value="array" ${node.config.mode==='array'?'selected':''}>Array (collect all)</option>
+        <option value="text"  ${node.config.mode==='text'?'selected':''}>Text (join strings)</option>
+        <option value="count" ${node.config.mode==='count'?'selected':''}>Count</option>
+        <option value="sum"   ${node.config.mode==='sum'?'selected':''}>Sum</option>
+      </select>`);
+      if (node.config.mode === 'text' || node._make?.module === 'util:TextAggregator') {
+        body += field('Value (per iteration)', `<input type="text" data-k="value" class="mono" value="${escapeAttr(node.config.value || '')}">`,
+          `Template resolved for each iteration, e.g. <code>{{30.dosagedays}}</code>.`);
+        body += field('Separator', `<input type="text" data-k="separator" class="mono" value="${escapeAttr(node.config.separator || ', ')}">`);
+      }
+      if (node.config.feederId != null) {
+        body += `<div class="field"><div class="hint">Paired with feeder id <code>${node.config.feederId}</code> (from Make). Accumulates once per iteration of that feeder.</div></div>`;
+      }
+      break;
+    case 'unknown':
+      body += field('Original mapper (read-only)',
+        `<textarea readonly class="mono" style="opacity:0.7;min-height:180px;">${escapeHtml(JSON.stringify(node._make?.mapper, null, 2))}</textarea>`,
+        'No FlowForge equivalent — original config preserved for round-trip export.');
+      break;
+  }
+
+  if (node._lastOutput !== undefined || node._lastError || node._lastInput !== undefined) {
+    const status = node._lastError ? 'err' : (node._lastOutput !== undefined ? 'ok' : '');
+    const statusText = node._lastError ? 'ERROR' : 'OK';
+    const summary = (() => {
+      if (node._lastError) return 'failed';
+      const o = node._lastOutput;
+      if (Array.isArray(o)) return `${o.length} bundle${o.length === 1 ? '' : 's'}`;
+      if (o && typeof o === 'object') return '1 bundle';
+      if (o !== undefined) return '1 value';
+      return '';
+    })();
+    const ts = node._lastRunAt ? ` • ${timeAgo(node._lastRunAt)}` : '';
+
+    // OUTPUT
+    body += `<div class="io-section">`;
+    body += `<div class="io-header">
+      <div class="io-title">Output${ts}${summary ? ` · ${summary}` : ''}</div>
+      <div class="io-actions">
+        ${status ? `<span class="output-status ${status}">${statusText}</span>` : ''}
+        <button id="io-copy-out" title="Copy as JSON">Copy</button>
+      </div>
+    </div>`;
+    if (node._lastError) {
+      body += `<div class="output-body">${escapeHtml(String(node._lastError))}</div>`;
+    } else if (node._lastOutput !== undefined) {
+      body += `<input class="io-search" id="io-search-out" placeholder="Search outputs…" autocomplete="off">`;
+      body += `<div class="tree" id="io-tree-out">${renderTree(node._lastOutput, 'Bundle 1')}</div>`;
+    }
+    body += `</div>`;
+
+    // INPUT
+    if (node._lastInput !== undefined && node._lastInput !== null) {
+      body += `<div class="io-section">`;
+      body += `<div class="io-header">
+        <div class="io-title">Input</div>
+        <div class="io-actions"><button id="io-copy-in" title="Copy as JSON">Copy</button></div>
+      </div>`;
+      body += `<input class="io-search" id="io-search-in" placeholder="Search inputs…" autocomplete="off">`;
+      body += `<div class="tree" id="io-tree-in">${renderTree(node._lastInput, 'Bundle 1')}</div>`;
+      body += `</div>`;
+    }
+  }
+
+  body += '</div>';
+
+  inspector.innerHTML = header + body;
+
+  $('#insp-run-one').onclick = () => runSingleNode(node);
+  $('#insp-clear-output').onclick = () => {
+    delete node._lastOutput; delete node._lastError;
+    delete node._lastStatus; delete node._lastRunAt;
+    delete node._lastInput;
+    render();
+  };
+
+  // Wire up Make-style INPUT / OUTPUT trees: expand/collapse + search
+  const treeOut = inspector.querySelector('#io-tree-out');
+  if (treeOut) attachTreeBehavior(treeOut, inspector.querySelector('#io-search-out'));
+  const treeIn = inspector.querySelector('#io-tree-in');
+  if (treeIn) attachTreeBehavior(treeIn, inspector.querySelector('#io-search-in'));
+  // Copy-as-JSON buttons
+  const copyOut = inspector.querySelector('#io-copy-out');
+  if (copyOut) copyOut.onclick = () => {
+    const payload = node._lastError ?? node._lastOutput;
+    const txt = typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2);
+    navigator.clipboard?.writeText(txt).then(() => {
+      const old = copyOut.textContent; copyOut.textContent = 'Copied'; setTimeout(() => { copyOut.textContent = old; }, 900);
+    });
+  };
+  const copyIn = inspector.querySelector('#io-copy-in');
+  if (copyIn) copyIn.onclick = () => {
+    const txt = JSON.stringify(node._lastInput, null, 2);
+    navigator.clipboard?.writeText(txt).then(() => {
+      const old = copyIn.textContent; copyIn.textContent = 'Copied'; setTimeout(() => { copyIn.textContent = old; }, 900);
+    });
+  };
+
+  inspector.querySelectorAll('[data-k]').forEach(inp => {
+    inp.oninput = () => {
+      const k = inp.dataset.k;
+      let v = inp.type === 'number' ? Number(inp.value) : inp.value;
+      if (k === '_label') node.label = v;
+      else if (k === '_filter') node.nodeFilter.expression = v;
+      else node.config[k] = v;
+      if (node.type === 'http' && k === 'method') renderInspector();
+      if (node.type === 'aggregator' && k === 'mode') renderInspector();
+      const card = document.querySelector(`.node[data-id="${node.id}"]`);
+      if (card) {
+        card.querySelector('.node-label').textContent = node.label;
+        card.querySelector('.node-sub').textContent = nodeSubtitle(node);
+      }
+      scheduleAutosave();
+    };
+  });
+
+  if (node.type === 'http') {
+    setupKvEditor(inspector.querySelector('#kv-headers'), node.config.headers, inspector.querySelector('#kv-headers-add'), 'Header');
+    setupKvEditor(inspector.querySelector('#kv-params'), node.config.params, inspector.querySelector('#kv-params-add'), 'Param');
+    const prevBtn = inspector.querySelector('#btn-preview-resolved');
+    if (prevBtn) prevBtn.onclick = () => previewResolvedHttp(node);
+  }
+}
+
+async function previewResolvedHttp(node) {
+  const steps = { ...lastRunSteps };
+  let fullUrl = buildFullUrl(node.config.url, node.config.params || [], steps);
+  const headers = {};
+  (node.config.headers || []).forEach(h => {
+    if (h.k) headers[resolveTemplate(h.k, steps)] = resolveTemplate(h.v, steps);
+  });
+  let bodyOut = '';
+  let droppedFields = [];
+  const isAirtable = /\bapi\.airtable\.com\b/.test(fullUrl);
+  let translatedToNames = false;
+  if (['POST','PUT','PATCH'].includes(node.config.method) && node.config.body) {
+    if (isAirtable) {
+      const result = resolveAirtableBody(node.config.body, steps);
+      bodyOut = result.body;
+      droppedFields = result.droppedFields;
+      try {
+        const parsed = JSON.parse(bodyOut);
+        const keys = parsed?.fields ? Object.keys(parsed.fields) : [];
+        const allIds = keys.length && keys.every(k => /^fld[A-Za-z0-9]{14}$/.test(k));
+        if (allIds) {
+          const m = fullUrl.match(/\/v0\/(app[A-Za-z0-9]+)\/(tbl[A-Za-z0-9]+)/);
+          if (m) {
+            const schema = await fetchAirtableSchema(m[1], m[2], headers['Authorization'] || headers['authorization']);
+            if (schema) {
+              const renamed = {};
+              for (const [k, v] of Object.entries(parsed.fields)) {
+                renamed[schema.fieldById[k] || k] = v;
+              }
+              parsed.fields = renamed;
+              bodyOut = JSON.stringify(parsed);
+              translatedToNames = true;
+            } else {
+              // Fallback: add ?returnFieldsByFieldId=true to URL
+              if (!/[?&]returnFieldsByFieldId=/.test(fullUrl)) {
+                fullUrl += (fullUrl.includes('?') ? '&' : '?') + 'returnFieldsByFieldId=true';
+              }
+              translatedToNames = 'fallback';
+            }
+          }
+        }
+      } catch {}
+    } else {
+      bodyOut = resolveTemplate(node.config.body, steps);
+    }
+  }
+  // Redact auth
+  const redactedHeaders = { ...headers };
+  for (const h of Object.keys(redactedHeaders)) {
+    if (/authorization|api.?key|token/i.test(h)) {
+      const v = redactedHeaders[h];
+      redactedHeaders[h] = v ? v.slice(0, 12) + '…[redacted]' : '';
+    }
+  }
+  const preview = {
+    method: node.config.method,
+    url: fullUrl,
+    headers: redactedHeaders,
+    body: bodyOut ? (() => { try { return JSON.parse(bodyOut); } catch { return bodyOut; } })() : undefined,
+  };
+  if (translatedToNames) preview._note = 'Field IDs have been translated to names via schema lookup';
+  if (droppedFields.length) preview._droppedEmptyFields = droppedFields;
+  node._lastOutput = preview;
+  node._lastError = null;
+  node._lastStatus = 'ok';
+  node._lastRunAt = Date.now();
+  renderInspector();
+  log('info', `#${node._stepNum}: showing resolved preview (not sent)`);
+}
+
+function setupKvEditor(container, arr, addBtn, placeholder) {
+  if (!container || !arr) return;
+  function paint() {
+    container.innerHTML = '';
+    arr.forEach((h, i) => {
+      const row = document.createElement('div');
+      row.className = 'kv-row';
+      row.innerHTML = `
+        <input type="text" placeholder="${placeholder}" value="${escapeAttr(h.k)}">
+        <input type="text" placeholder="value" value="${escapeAttr(h.v)}">
+        <button>×</button>`;
+      const [ki, vi, rb] = row.children;
+      ki.oninput = e => {
+        h.k = e.target.value;
+        scheduleAutosave();
+        updateNodeCard();
+      };
+      vi.oninput = e => {
+        h.v = e.target.value;
+        scheduleAutosave();
+      };
+      rb.onclick = () => { arr.splice(i, 1); paint(); scheduleAutosave(); updateNodeCard(); };
+      container.appendChild(row);
+    });
+  }
+  function updateNodeCard() {
+    if (!selectedId) return;
+    const node = findNodeById(selectedId);
+    if (!node) return;
+    const card = document.querySelector(`.node[data-id="${node.id}"]`);
+    if (card) card.querySelector('.node-sub').textContent = nodeSubtitle(node);
+  }
+  paint();
+  addBtn.onclick = () => { arr.push({ k: '', v: '' }); paint(); };
+}
+
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  return new Date(ts).toLocaleTimeString();
+}
+function field(label, inputHtml, hint) {
+  return `<div class="field"><label>${label}</label>${inputHtml}${hint ? `<div class="hint">${hint}</div>` : ''}</div>`;
+}
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => (
+    { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]
+  ));
+}
+function escapeAttr(s) { return escapeHtml(s).replace(/"/g, '&quot;'); }
+
+// ============================================================
+//   EXECUTOR
+// ============================================================
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ============================================================
+//  MAKE EXPRESSION EVALUATOR
+//  Handles function calls like replace(toString(N.foo); ","; ".")
+//  and array plucking like vitals[].Pulse
+// ============================================================
+
+const MAKE_FUNCTIONS = {
+  // Strings
+  toString:   v => {
+    if (v == null) return '';
+    // Make joins primitive arrays without spaces — i.e. toString([a,b,c]) → "[a,b,c]"
+    // Adding a space here breaks formulas like:
+    //   replace(replace(replace(replace(toString(arr); ","; ""","""); "["; """"); "]"; """");
+    //          """,""" + space; "," + newline)
+    // which expects the comma joiner to be exactly "," so the chain produces "a","b","c".
+    if (Array.isArray(v)) return '[' + v.map(x => x == null ? '' : String(x)).join(',') + ']';
+    if (typeof v === 'object') return JSON.stringify(v);
+    return String(v);
+  },
+  upper:      v => String(v ?? '').toUpperCase(),
+  lower:      v => String(v ?? '').toLowerCase(),
+  trim:       v => String(v ?? '').trim(),
+  length:     v => Array.isArray(v) || typeof v === 'string' ? v.length
+                  : (v && typeof v === 'object' ? Object.keys(v).length : 0),
+  replace:    (s, search, repl) => String(s ?? '').split(String(search ?? '')).join(String(repl ?? '')),
+  substring:  (s, a, b) => String(s ?? '').substring(Number(a) || 0, b !== undefined ? Number(b) : undefined),
+  indexOf:    (s, q) => String(s ?? '').indexOf(String(q ?? '')),
+  contains:   (s, q) => String(s ?? '').includes(String(q ?? '')),
+  startsWith: (s, q) => String(s ?? '').startsWith(String(q ?? '')),
+  endsWith:   (s, q) => String(s ?? '').endsWith(String(q ?? '')),
+  split:      (s, sep) => String(s ?? '').split(String(sep ?? '')),
+  join:       (arr, sep) => Array.isArray(arr) ? arr.join(String(sep ?? ',')) : String(arr ?? ''),
+  capitalize: v => { const s = String(v ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); },
+  // Numbers
+  toNumber:   v => Number(v ?? 0),
+  add:        (a, b) => Number(a) + Number(b),
+  sub:        (a, b) => Number(a) - Number(b),
+  mul:        (a, b) => Number(a) * Number(b),
+  div:        (a, b) => Number(a) / Number(b),
+  round:      v => Math.round(Number(v)),
+  floor:      v => Math.floor(Number(v)),
+  ceil:       v => Math.ceil(Number(v)),
+  // Arrays / Collections
+  get:        (coll, idx) => {
+    if (Array.isArray(coll)) {
+      const i = Number(idx);
+      // Make uses 1-based indexing
+      return Number.isFinite(i) ? coll[i - 1] : coll.find(x => x?.id === idx);
+    }
+    if (coll && typeof coll === 'object') return coll[idx];
+    return undefined;
+  },
+  first:      v => Array.isArray(v) ? v[0] : v,
+  last:       v => Array.isArray(v) ? v[v.length - 1] : v,
+  map:        (arr, key) => Array.isArray(arr) ? arr.map(x => x?.[key]) : [],
+  // Logic
+  if:         (cond, t, f) => isTruthy(cond) ? t : f,
+  ifempty:    (val, fb) => (val === undefined || val === null || val === '') ? fb : val,
+  emptystring: v => (v === undefined || v === null || v === ''),
+  not:        v => !isTruthy(v),
+  // Dates
+  now:        () => new Date().toISOString(),
+  formatDate: (d, fmt) => {
+    const date = d instanceof Date ? d : new Date(parseFlexDate(d));
+    if (isNaN(date)) return String(d ?? '');
+    const pad = n => String(n).padStart(2, '0');
+    return String(fmt || 'YYYY-MM-DD')
+      .replace(/YYYY/g, date.getFullYear())
+      .replace(/MM/g, pad(date.getMonth() + 1))
+      .replace(/DD/g, pad(date.getDate()))
+      .replace(/HH/g, pad(date.getHours()))
+      .replace(/mm/g, pad(date.getMinutes()))
+      .replace(/ss/g, pad(date.getSeconds()));
+  },
+  parseDate:  s => parseFlexDate(s),
+  // JSON
+  parseJSON:  s => { try { return JSON.parse(String(s)); } catch { return s; } },
+};
+
+function isTruthy(v) {
+  if (v === undefined || v === null || v === false || v === '' || v === 0) return false;
+  if (Array.isArray(v) && v.length === 0) return false;
+  return true;
+}
+function parseFlexDate(s) {
+  if (!s) return s;
+  const fixed = normalizeDateString(String(s));
+  return fixed;
+}
+
+// Split function arguments by ; respecting nested () and "" 
+function splitMakeArgs(s) {
+  const args = [];
+  let depth = 0, inStr = false, current = '';
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '"') {
+      if (inStr && s[i + 1] === '"') { current += '""'; i++; continue; }
+      inStr = !inStr;
+      current += c;
+    } else if (!inStr && c === '(') { depth++; current += c; }
+    else if (!inStr && c === ')') { depth--; current += c; }
+    else if (!inStr && c === ';' && depth === 0) {
+      args.push(current.trim()); current = '';
+    } else { current += c; }
+  }
+  if (current.trim() || args.length > 0) args.push(current.trim());
+  return args;
+}
+
+// Split on top-level `+` (string concat / addition) respecting () and "" 
+function splitTopLevelPlus(s) {
+  const parts = [];
+  let depth = 0, inStr = false, current = '';
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '"') {
+      if (inStr && s[i + 1] === '"') { current += '""'; i++; continue; }
+      inStr = !inStr;
+      current += c;
+    } else if (!inStr && c === '(') { depth++; current += c; }
+    else if (!inStr && c === ')') { depth--; current += c; }
+    else if (!inStr && c === '+' && depth === 0) {
+      parts.push(current.trim()); current = '';
+    } else { current += c; }
+  }
+  if (current.trim()) parts.push(current.trim());
+  return parts;
+}
+
+// Make built-in constants
+const MAKE_CONSTS = {
+  space:       ' ',
+  newline:     '\n',
+  tab:         '\t',
+  emptystring: '',
+  CR:          '\r',
+  LF:          '\n',
+};
+
+// Evaluate one Make expression (the inner content between {{ and }})
+function evalMakeExpr(body, refResolverFn) {
+  body = String(body).trim();
+  if (!body) return '';
+
+  // Infix `+`: split top-level + parts. If multi-parts, evaluate each and join.
+  // Skip if there's a leading - or it's a single token like "-5" or pure number.
+  if (body.indexOf('+') >= 0) {
+    const parts = splitTopLevelPlus(body);
+    if (parts.length > 1) {
+      const vals = parts.map(p => evalMakeExpr(p, refResolverFn));
+      // If all numeric, sum them; otherwise concat as strings (Make's default + behavior)
+      if (vals.every(v => typeof v === 'number' || (!isNaN(Number(v)) && v !== '' && v != null))) {
+        return vals.reduce((a, b) => Number(a) + Number(b), 0);
+      }
+      return vals.map(v => v == null ? '' : String(v)).join('');
+    }
+  }
+
+  // Function call
+  const fnMatch = body.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([\s\S]*)\)\s*$/);
+  if (fnMatch) {
+    const name = fnMatch[1];
+    const fn = MAKE_FUNCTIONS[name];
+    const args = splitMakeArgs(fnMatch[2]).map(a => evalMakeExpr(a, refResolverFn));
+    if (!fn) return `[unknown:${name}]`;
+    try { return fn(...args); }
+    catch (e) { return `[err:${name}:${e.message}]`; }
+  }
+  // String literal "..."  ("" is escape for ")
+  if (body.startsWith('"') && body.endsWith('"') && body.length >= 2) {
+    return body.slice(1, -1).replace(/""/g, '"');
+  }
+  // Number literal
+  if (/^-?\d+(\.\d+)?$/.test(body)) return Number(body);
+  // Boolean / null
+  if (body === 'true') return true;
+  if (body === 'false') return false;
+  if (body === 'null') return null;
+  // Make built-in constants (space, newline, tab, emptystring, CR, LF)
+  if (Object.prototype.hasOwnProperty.call(MAKE_CONSTS, body)) return MAKE_CONSTS[body];
+  // Variable reference: starts with digit (e.g. 5.foo or 32.bar) or uppercase secret name
+  if (/^\d/.test(body) || /^[A-Z][A-Z0-9_]*(\.|$)/.test(body)) {
+    return refResolverFn('{{' + body + '}}');
+  }
+  return body;
+}
+
+// Resolve a path like "vitals[].Pulse" against an object.
+// Supports [] for array plucking (returns array of plucked values).
+function resolvePath(data, path) {
+  if (data === undefined || data === null) return undefined;
+  if (!path) return data;
+  const parts = path.split('.');
+  let current = data;
+  for (let i = 0; i < parts.length; i++) {
+    if (current === undefined || current === null) return undefined;
+    let part = parts[i].trim();
+    let pluck = false;
+    if (part.endsWith('[]')) {
+      pluck = true;
+      part = part.slice(0, -2);
+    }
+    if (part) {
+      // Primary lookup: exact match
+      let next = current[part];
+      // Fallback 1: case-insensitive and whitespace-flexible match
+      // (handles Unite variants like "Clinic Name" vs "clinicname", "Visit Date" vs "visitdate")
+      if (next === undefined && current && typeof current === 'object' && !Array.isArray(current)) {
+        const normalizeKey = s => String(s).toLowerCase().replace(/[\s_-]/g, '');
+        const targetNorm = normalizeKey(part);
+        for (const k of Object.keys(current)) {
+          if (normalizeKey(k) === targetNorm) { next = current[k]; break; }
+        }
+      }
+      current = next;
+    }
+    if (pluck) {
+      if (!Array.isArray(current)) return [];
+      const rest = parts.slice(i + 1).join('.');
+      if (!rest) return current;
+      return current.map(item => resolvePath(item, rest));
+    }
+  }
+  return current;
+}
+
+// Map a Make module string to a visual app color class (Make-style)
+function makeAppClass(node) {
+  const mod = node._make?.module || '';
+  if (mod.startsWith('airtable:')) return 'app-airtable';
+  if (mod.startsWith('http:')) return 'app-http';
+  if (mod.startsWith('builtin:')) return 'app-builtin';
+  if (mod.startsWith('util:')) return 'app-util';
+  if (mod.startsWith('datastore:')) return 'app-datastore';
+  if (mod.startsWith('helper:') || mod.startsWith('json:')) return 'app-helper';
+  if (mod.startsWith('gmail:') || mod.startsWith('google-')) return 'app-google';
+  if (mod.startsWith('slack:')) return 'app-slack';
+  if (mod.startsWith('webhook:') || mod.startsWith('webhooks:')) return 'app-webhook';
+  return '';
+}
+
+function refResolver(steps) {
+  const secrets = loadSecrets();
+  return ref => {
+    const m = String(ref).match(/^\{\{(.+?)(?:\.(.+?))?\}\}$/);
+    if (!m) return ref;
+    const key = m[1], path = m[2];
+    if (/^\d+$/.test(key)) {
+      const data = steps[key];
+      return resolvePath(data, path);
+    }
+    return resolvePath(secrets[key], path);
+  };
+}
+
+function resolveTemplate(str, steps) {
+  if (typeof str !== 'string') return str;
+  const r = refResolver(steps);
+  return str.replace(/\{\{([^{}]+?)\}\}/g, (m, inner) => {
+    let v;
+    // Route through evalMakeExpr if it has function calls, infix +, or built-in constants
+    const trimmed = inner.trim();
+    const hasFunction = /[a-zA-Z_][a-zA-Z0-9_]*\s*\(/.test(trimmed);
+    const hasPlus = trimmed.indexOf('+') >= 0;
+    const hasConst = /\b(space|newline|tab|emptystring|CR|LF)\b/.test(trimmed);
+    if (hasFunction || hasPlus || hasConst) {
+      try { v = evalMakeExpr(inner, r); }
+      catch { v = undefined; }
+    } else {
+      v = r(`{{${inner}}}`);
+    }
+    if (v === undefined) return m;
+    return typeof v === 'object' ? JSON.stringify(v) : String(v);
+  });
+}
+
+// Recursively walk an object/array, resolving any {{...}} templates in string values.
+// Up to 5 levels of recursion to handle e.g. datastore output that references vault keys.
+function deepResolveTemplates(value, steps, depth = 0) {
+  if (depth > 5 || value == null) return value;
+  if (typeof value === 'string') {
+    if (value.indexOf('{{') < 0) return value;
+    const resolved = resolveTemplate(value, steps);
+    if (resolved !== value && resolved.indexOf('{{') >= 0) {
+      return deepResolveTemplates(resolved, steps, depth + 1);
+    }
+    return resolved;
+  }
+  if (Array.isArray(value)) return value.map(v => deepResolveTemplates(v, steps, depth + 1));
+  if (typeof value === 'object') {
+    const out = {};
+    for (const k of Object.keys(value)) out[k] = deepResolveTemplates(value[k], steps, depth + 1);
+    return out;
+  }
+  return value;
+}
+
+// Walk a parsed JSON tree and resolve any {{...}} templates in string values.
+// This is the correct way to substitute into JSON bodies — it lets JSON.stringify
+// handle all escaping automatically (quotes, newlines, control chars, unicode).
+function walkResolveInJSON(value, steps) {
+  if (value === null || value === undefined) return value;
+  if (typeof value === 'string') {
+    // Full template ref — entire string is one {{...}}
+    const fullMatch = value.match(/^\s*\{\{([^{}]+?)\}\}\s*$/);
+    if (fullMatch) {
+      const inner = fullMatch[1];
+      const trimmed = inner.trim();
+      const r = refResolver(steps);
+      let v;
+      const hasFn = /[a-zA-Z_][a-zA-Z0-9_]*\s*\(/.test(trimmed);
+      const hasPlus = trimmed.indexOf('+') >= 0;
+      const hasConst = /\b(space|newline|tab|emptystring|CR|LF)\b/.test(trimmed);
+      if (hasFn || hasPlus || hasConst) {
+        try { v = evalMakeExpr(inner, r); } catch { v = undefined; }
+      } else {
+        v = r(`{{${inner}}}`);
+      }
+      if (v === undefined) return value; // leave placeholder intact
+      // Array plucking (like {{6.vitals[].Height}}) often returns a single-element
+      // array of a primitive — unwrap it to a scalar so Airtable text/number fields
+      // accept it. Do NOT unwrap arrays of objects (like single-element diagnosis
+      // array), because those should be stringified as JSON arrays for multilineText.
+      if (Array.isArray(v) && v.length === 1) {
+        const only = v[0];
+        if (only !== null && typeof only === 'object') {
+          // Single-element object array → keep as array, stringify below
+        } else {
+          return only; // primitive scalar — return directly
+        }
+      }
+      if (Array.isArray(v) && v.length === 0) return undefined; // drop empty
+      // Object/array → store as JSON string for Airtable text fields
+      if (v !== null && typeof v === 'object') return JSON.stringify(v);
+      return v;
+    }
+    // Embedded template(s) — use string interpolation (result is always a string)
+    if (value.indexOf('{{') >= 0) return resolveTemplate(value, steps);
+    return value;
+  }
+  if (Array.isArray(value)) return value.map(x => walkResolveInJSON(x, steps));
+  if (typeof value === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k] = walkResolveInJSON(v, steps);
+    return out;
+  }
+  return value;
+}
+
+// Smart Airtable body resolver: parses JSON template, substitutes at value level
+// (so JSON serialization handles all escaping), then applies dates/empty-field cleanup.
+// Schema cache: baseId + tableId → { fieldById: {id: name}, fieldByName: {name: id} }
+const AIRTABLE_SCHEMA_CACHE = new Map();
+
+async function fetchAirtableSchema(baseId, tableId, authHeader) {
+  const cacheKey = `${baseId}/${tableId}`;
+  if (AIRTABLE_SCHEMA_CACHE.has(cacheKey)) return AIRTABLE_SCHEMA_CACHE.get(cacheKey);
+  try {
+    const res = await fetch(`https://api.airtable.com/v0/meta/bases/${baseId}/tables`, {
+      headers: { Authorization: authHeader },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const tbl = (data.tables || []).find(t => t.id === tableId);
+    if (!tbl) return null;
+    const fieldById = {};
+    const fieldByName = {};
+    for (const f of tbl.fields) {
+      fieldById[f.id] = f.name;
+      fieldByName[f.name] = f.id;
+    }
+    const schema = { fieldById, fieldByName };
+    AIRTABLE_SCHEMA_CACHE.set(cacheKey, schema);
+    return schema;
+  } catch { return null; }
+}
+
+// Given a fields object (keyed by field IDs or names), return it with BOTH
+// id-keyed AND name-keyed access, so {{N.Patient Name}} and {{N.fldXXX}} both work.
+async function expandFieldKeys(fieldsObj, url, headers) {
+  if (!fieldsObj || typeof fieldsObj !== 'object') return fieldsObj;
+  const m = url.match(/\/v0\/(app[A-Za-z0-9]+)\/(tbl[A-Za-z0-9]+)/);
+  if (!m) return fieldsObj;
+  const [, baseId, tableId] = m;
+  const pat = headers['Authorization'] || headers['authorization'];
+  if (!pat) return fieldsObj;
+  const schema = await fetchAirtableSchema(baseId, tableId, pat);
+  if (!schema) return fieldsObj;
+  const out = { ...fieldsObj };
+  for (const [k, v] of Object.entries(fieldsObj)) {
+    if (/^fld[A-Za-z0-9]{14}$/.test(k) && schema.fieldById[k]) {
+      out[schema.fieldById[k]] = v;
+    } else if (schema.fieldByName[k]) {
+      out[schema.fieldByName[k]] = v;
+    }
+  }
+  return out;
+}
+
+// Smart Airtable body resolver: parses JSON template, substitutes at value level
+// (so JSON serialization handles all escaping), then applies dates/empty-field cleanup.
+// Falls back to string-replace mode if the body isn't valid JSON (e.g. makeApiCall bodies
+// with unquoted {{N.name}} placeholders).
+function resolveAirtableBody(bodyTemplate, steps) {
+  let parsed;
+  try { parsed = JSON.parse(bodyTemplate); }
+  catch {
+    // Fallback: dumb string replacement + try to clean as much as possible
+    const resolved = resolveTemplate(bodyTemplate, steps);
+    return normalizeAirtableBody(resolved);
+  }
+  const resolved = walkResolveInJSON(parsed, steps);
+  // Apply date + cleanup passes
+  walkNormalize(resolved);
+  const secrets = (typeof loadSecrets === 'function') ? loadSecrets() : {};
+  if (String(secrets.AIRTABLE_KEEP_TIME || '').toLowerCase() !== 'true') {
+    walkStripTime(resolved);
+  }
+  cleanAirtableFields(resolved);
+  const dropped = resolved._droppedFields || [];
+  delete resolved._droppedFields;
+  return { body: JSON.stringify(resolved), droppedFields: dropped };
+}
+
+async function runWorkflow() {
+  // If already running, treat this as a Stop request
+  if (isRunning) {
+    abortRequested = true;
+    log('warn', 'Stop requested — finishing current step then halting…');
+    updateRunButton();
+    return;
+  }
+
+  if (workflow.length === 0) { log('warn', 'Workflow is empty.'); return; }
+
+  isRunning = true;
+  abortRequested = false;
+  updateRunButton();
+  $('#run-dot').classList.add('active');
+  clearNodeStatuses(workflow);
+  lastRunSteps = {};
+  totalIterationCount = 0;
+  log('info', `── Run: ${escapeHtml(scenarioName)} ──`);
+
+  try {
+    await runChain(workflow, null, lastRunSteps);
+    if (abortRequested) log('warn', '── Run stopped by user ──');
+    else log('info', '── Run complete ──');
+  } catch (err) {
+    if (err.message === 'STOPPED') log('warn', '── Run stopped by user ──');
+    else log('err', `Run aborted: ${err.message}`);
+  } finally {
+    isRunning = false;
+    abortRequested = false;
+    $('#run-dot').classList.remove('active');
+    updateRunButton();
+  }
+}
+
+function updateRunButton() {
+  const btn = $('#btn-run');
+  if (!btn) return;
+  if (isRunning) {
+    btn.textContent = abortRequested ? '⏳ Stopping…' : '■ Stop';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-danger');
+    if (abortRequested) btn.disabled = true;
+  } else {
+    btn.textContent = '▶ Run All';
+    btn.classList.add('btn-primary');
+    btn.classList.remove('btn-danger');
+    btn.disabled = false;
+  }
+}
+
+function clearNodeStatuses(nodes) {
+  for (const n of nodes) {
+    delete n._lastStatus;
+    if (n.branches) for (const b of n.branches) clearNodeStatuses(b);
+  }
+}
+
+// Global safety cap to avoid runaway nested loops. Default is high enough to
+// not bite real workflows; raise via the Vault (MAX_ITERATIONS) for fan-out
+// patterns that legitimately need more, or set to -1 to disable.
+let totalIterationCount = 0;
+const DEFAULT_MAX_TOTAL_ITERATIONS = 100000;
+function getMaxTotalIterations() {
+  try {
+    const fromVault = Number(loadSecrets().MAX_ITERATIONS);
+    if (Number.isFinite(fromVault) && fromVault !== 0) return fromVault;
+  } catch {}
+  return DEFAULT_MAX_TOTAL_ITERATIONS;
+}
+
+// Resolve iterator source into an array
+function resolveIteratorSource(node, steps) {
+  const raw = node.config.source;
+  const src = resolveTemplate(raw, steps);
+  let items;
+  if (Array.isArray(src)) items = src;
+  else if (typeof src === 'string') {
+    try { items = JSON.parse(src); } catch { items = [src]; }
+  } else if (src == null) items = [];
+  else items = [src];
+  if (!Array.isArray(items)) items = [items];
+  return items;
+}
+
+// Walk the context chain to find the iteration that this aggregator pairs with.
+// If aggregator has a feederId (Make id), match by that. Else match the innermost loop.
+function findLoopForAggregator(aggNode, ctx) {
+  const feederId = aggNode.config?.feederId ?? aggNode._make?.parameters?.feeder ?? null;
+  let cur = ctx;
+  while (cur) {
+    if (cur.iteration) {
+      if (feederId != null) {
+        if (cur.iteration.feederMakeId === feederId) return cur.iteration;
+      } else {
+        return cur.iteration;
+      }
+    }
+    cur = cur.parent;
+  }
+  return null;
+}
+
+// Finalize an aggregator's accumulated values into a single output value
+function finalizeAggregator(aggNode, values) {
+  if (aggNode._make?.module === 'util:TextAggregator') {
+    const sep = aggNode.config?.separator ?? ', ';
+    return { text: values.filter(v => v !== undefined && v !== null && v !== '').join(sep) };
+  }
+  if (aggNode._make?.module === 'util:NumericAggregator') {
+    return { value: values.reduce((a, b) => a + (Number(b) || 0), 0) };
+  }
+  switch (aggNode.config.mode) {
+    case 'count': return values.length;
+    case 'sum':   return values.reduce((a, b) => a + (Number(b) || 0), 0);
+    case 'text': {
+      const sep = aggNode.config?.separator ?? ', ';
+      return { text: values.filter(v => v !== undefined && v !== null && v !== '').join(sep) };
+    }
+    default:      return values;
+  }
+}
+
+// Main executor. `ctx` tracks nested iteration state: { iteration: {...}, parent: ctx | null }
+async function runChain(nodes, inputForFirst, steps, ctx = null) {
+  let prev = inputForFirst;
+  for (let i = 0; i < nodes.length; i++) {
+    if (abortRequested) throw new Error('STOPPED');
+    const node = nodes[i];
+    const num = node._stepNum;
+    const el = document.querySelector(`.node[data-id="${node.id}"]`);
+
+    // Inbound filter
+    if (node.nodeFilter) {
+      const passed = evalFilter(node.nodeFilter.expression, prev, steps);
+      if (!passed) {
+        el?.classList.add('skipped');
+        log('warn', `#${num} ${escapeHtml(node.label)}: filter blocked`);
+        return prev;  // halt this chain
+      }
+    }
+
+    el?.classList.add('running');
+    await sleep(30);
+
+    // ---------- AGGREGATOR inside a loop context ----------
+    if (node.type === 'aggregator') {
+      const loop = findLoopForAggregator(node, ctx);
+      if (loop) {
+        // Accumulate for this iteration
+        if (!loop.accumulators.has(node.id)) loop.accumulators.set(node.id, []);
+        let value;
+        if (node.config?.value) {
+          // TextAggregator has an explicit value template
+          value = resolveTemplate(node.config.value, steps);
+        } else {
+          value = prev;
+        }
+        loop.accumulators.get(node.id).push(value);
+
+        const isLast = loop.current >= loop.total - 1;
+        if (!isLast) {
+          // More iterations to go — this iteration ends here
+          el?.classList.remove('running');
+          el?.classList.add('skipped');
+          return prev;
+        }
+
+        // Last iteration: finalize
+        const values = loop.accumulators.get(node.id);
+        const out = finalizeAggregator(node, values);
+        steps[num] = out;
+        node._lastOutput = out;
+        node._lastStatus = 'ok';
+        node._lastRunAt = Date.now();
+        el?.classList.remove('running');
+        el?.classList.add('success');
+        log('ok', `#${num} ${escapeHtml(node.label)}: aggregated ${values.length} values`, out);
+        prev = out;
+        continue;
+      }
+      // No matching loop — fall through to normal execution (single-shot aggregator)
+    }
+
+    // ---------- ITERATOR: run downstream N times ----------
+    if (node.type === 'iterator') {
+      const items = resolveIteratorSource(node, steps);
+      const maxIter = Number(node.config.maxIter) || 100;
+      const count = Math.min(items.length, maxIter);
+      if (items.length > maxIter) {
+        log('warn', `#${num}: capped at ${maxIter} iterations (source had ${items.length})`);
+      }
+
+      node._lastOutput = items;
+      node._lastStatus = 'ok';
+      node._lastRunAt = Date.now();
+      el?.classList.remove('running');
+      el?.classList.add('success');
+      log('info', `#${num} ${escapeHtml(node.label)}: iterating ${count} items`);
+
+      const loopFrame = {
+        feederMakeId: node._make?.id ?? null,
+        current: 0,
+        total: count,
+        accumulators: new Map(),
+      };
+
+      const remaining = nodes.slice(i + 1);
+
+      for (let j = 0; j < count; j++) {
+        if (abortRequested) throw new Error('STOPPED');
+        const cap = getMaxTotalIterations();
+        if (cap > 0 && totalIterationCount++ > cap) {
+          log('err',
+            `Hit global iteration cap (${cap}). Stopping. ` +
+            `Raise it by setting <code>MAX_ITERATIONS</code> in the Vault (use <code>-1</code> to disable).`);
+          throw new Error('Global iteration cap exceeded');
+        }
+        loopFrame.current = j;
+        const item = items[j];
+        // Inside the loop, {{stepNum.field}} resolves to current item's field (Make semantics)
+        const itemSteps = { ...steps, [num]: item };
+        const isLastIter = j === count - 1;
+        log('info', `  [${j + 1}/${count}] iteration`);
+        try {
+          await runChain(remaining, item, itemSteps, {
+            iteration: loopFrame,
+            parent: ctx,
+          });
+          // After the last iteration, itemSteps has the aggregator outputs + post-aggregator steps.
+          // Promote those back up so sibling chains after this iterator can reference them.
+          if (isLastIter) {
+            for (const [k, v] of Object.entries(itemSteps)) {
+              if (!(k in steps)) steps[k] = v;
+            }
+          }
+        } catch (err) {
+          log('warn', `    iter ${j + 1}: ${err.message}`);
+        }
+      }
+
+      // The iterator consumed the remainder of this chain via per-item execution.
+      // Nothing more to do at this level.
+      return prev;
+    }
+
+    // ---------- NORMAL node execution ----------
+    let out;
+    try {
+      // Default INPUT = upstream output. execNode for 'http'/'set' overrides
+      // this with a richer resolved-config snapshot for the inspector.
+      node._lastInput = prev;
+      out = await execNode(node, prev, steps);
+      node._lastOutput = out; node._lastError = null;
+      node._lastStatus = 'ok'; node._lastRunAt = Date.now();
+    } catch (err) {
+      node._lastError = err.message; node._lastStatus = 'err';
+      node._lastRunAt = Date.now();
+      el?.classList.remove('running');
+      el?.classList.add('error');
+      log('err', `#${num} ${escapeHtml(node.label)}: ${err.message}`);
+      throw err;
+    }
+
+    steps[num] = out;
+    prev = out;
+    el?.classList.remove('running');
+    el?.classList.add('success');
+
+    // Routers: each branch runs with the router's input
+    if (node.type === 'router' && node.branches) {
+      log('info', `#${num}: router → ${node.branches.length} routes`);
+      for (let k = 0; k < node.branches.length; k++) {
+        log('info', `  ↳ Route ${k + 1}`);
+        try {
+          await runChain(node.branches[k], prev, { ...steps }, ctx);
+        } catch (err) {
+          log('err', `  ↳ Route ${k + 1}: ${err.message}`);
+        }
+      }
+    }
+  }
+  return prev;
+}
+
+async function runSingleNode(node) {
+  log('info', `── Run single: #${node._stepNum} ${escapeHtml(node.label)} ──`);
+  const el = document.querySelector(`.node[data-id="${node.id}"]`);
+  el?.classList.remove('success', 'error', 'skipped');
+  el?.classList.add('running');
+
+  try {
+    const steps = { ...lastRunSteps };
+    const prev = steps[node._stepNum - 1] ?? null;
+
+    if (node.nodeFilter) {
+      const passed = evalFilter(node.nodeFilter.expression, prev, steps);
+      if (!passed) {
+        el?.classList.remove('running');
+        el?.classList.add('skipped');
+        node._lastError = 'Inbound filter blocked';
+        node._lastStatus = 'err'; node._lastRunAt = Date.now();
+        log('warn', `#${node._stepNum}: filter blocked`);
+        renderInspector();
+        return;
+      }
+    }
+
+    const out = await execNode(node, prev, steps);
+    if (node._lastInput === undefined) node._lastInput = prev;
+    node._lastOutput = out; node._lastError = null;
+    node._lastStatus = 'ok'; node._lastRunAt = Date.now();
+    lastRunSteps[node._stepNum] = out;
+    el?.classList.remove('running');
+    el?.classList.add('success');
+    log('ok', `#${node._stepNum}: ran successfully`);
+  } catch (err) {
+    node._lastError = err.message;
+    node._lastStatus = 'err'; node._lastRunAt = Date.now();
+    el?.classList.remove('running');
+    el?.classList.add('error');
+    log('err', `#${node._stepNum}: ${err.message}`);
+  }
+  renderInspector();
+}
+
+function evalFilter(expr, input, steps) {
+  try {
+    const $$ref = refResolver(steps);
+    const fn = new Function('input', 'steps', '$$ref', `return (${expr});`);
+    return !!fn(input, steps, $$ref);
+  } catch (err) {
+    log('warn', `Filter eval error: ${err.message}`);
+    return false;
+  }
+}
+
+// Build a full URL from base + params, with proper encoding of resolved values
+function buildFullUrl(baseUrl, params, steps) {
+  const resolved = resolveTemplate(baseUrl, steps);
+  const activeParams = (params || []).filter(p => p.k);
+  if (activeParams.length === 0) return resolved;
+  const qs = activeParams
+    .map(p => {
+      const k = resolveTemplate(p.k, steps);
+      const v = resolveTemplate(p.v, steps);
+      return `${encodeURIComponent(k)}=${encodeURIComponent(v)}`;
+    })
+    .join('&');
+  return resolved + (resolved.includes('?') ? '&' : '?') + qs;
+}
+
+async function execNode(node, prev, steps) {
+  switch (node.type) {
+    case 'set': {
+      let v = node.config.value;
+      v = resolveTemplate(v, steps);
+      // Auto-parse only for non-SetVariable nodes (i.e. datastore output) so
+      // downstream {{N.field}} traversal works on the parsed object.
+      //
+      // For SetVariable nodes (_wrapByName), DO NOT parse: Make stores variable
+      // values as raw strings and substitutes them verbatim into downstream
+      // templates. Make formulas like:
+      //
+      //   replace(replace(replace(replace(toString(arr); ","; ""","""); "["; """");
+      //           "]"; """"); """,""" + space; "," + newline)
+      //
+      // intentionally produce JSON-fragment strings such as '"rec1","rec2"' for
+      // injection into a JSON body. JSON.parse on a single-element result like
+      // '"rec1"' would strip the outer quotes (it's valid JSON for a string),
+      // breaking the substitution. Skipping parse keeps Make's semantics.
+      if (!node._wrapByName) {
+        try { v = JSON.parse(v); } catch {}
+      }
+      // If the parsed value is an object/array, recursively resolve any embedded
+      // {{TOKEN}} templates within string fields (e.g. datastore output that
+      // references vault keys like {{UNITE_TOKEN}})
+      v = deepResolveTemplates(v, steps);
+      // SetVariable nodes (Make's util:SetVariable*) wrap the result as
+      // { [name]: value } so that downstream {{N.varname}} references resolve
+      // correctly. Datastore nodes use the same node.type='set' but don't get
+      // this flag — they return the raw record so {{N.fieldname}} works.
+      const out = node._wrapByName ? { [node.config.name]: v } : v;
+      // Capture INPUT for the inspector — what the user configured + what it resolved to.
+      node._lastInput = {
+        'Variable name': node.config.name,
+        'Source template': node.config.value,
+        'Resolved value': v,
+      };
+      log('ok', `#${node._stepNum}: set <code>${escapeHtml(node.config.name)}</code>`, v);
+      return out;
+    }
+    case 'http': {
+      let fullUrl = buildFullUrl(node.config.url, node.config.params || [], steps);
+      const headers = {};
+      (node.config.headers || []).forEach(h => {
+        if (h.k) headers[resolveTemplate(h.k, steps)] = resolveTemplate(h.v, steps);
+      });
+      const init = { method: node.config.method, headers };
+      const isAirtable = /\bapi\.airtable\.com\b/.test(fullUrl);
+      let droppedFields = [];
+      let translatedToNames = false;
+      if (['POST','PUT','PATCH'].includes(node.config.method) && node.config.body) {
+        if (isAirtable) {
+          const result = resolveAirtableBody(node.config.body, steps);
+          init.body = result.body;
+          droppedFields = result.droppedFields;
+
+          // If the body's fields are keyed by field IDs, translate them to field NAMES.
+          // This matches Make's connector behavior (useColumnId: false) and uses the
+          // standard Airtable REST API format which works reliably without any special
+          // query parameters or headers.
+          try {
+            const parsed = JSON.parse(init.body);
+            const fieldKeys = parsed?.fields ? Object.keys(parsed.fields) : [];
+            const allIds = fieldKeys.length && fieldKeys.every(k => /^fld[A-Za-z0-9]{14}$/.test(k));
+            if (allIds) {
+              const m = fullUrl.match(/\/v0\/(app[A-Za-z0-9]+)\/(tbl[A-Za-z0-9]+)/);
+              if (m) {
+                const [, baseId, tableId] = m;
+                const schema = await fetchAirtableSchema(baseId, tableId, headers['Authorization'] || headers['authorization']);
+                if (schema) {
+                  const renamedFields = {};
+                  for (const [k, v] of Object.entries(parsed.fields)) {
+                    const name = schema.fieldById[k] || k;
+                    renamedFields[name] = v;
+                  }
+                  parsed.fields = renamedFields;
+                  init.body = JSON.stringify(parsed);
+                  translatedToNames = true;
+                } else {
+                  // Fallback: add ?returnFieldsByFieldId=true so Airtable accepts field IDs
+                  // in the request body. Works without needing schema.bases:read scope.
+                  if (!/[?&]returnFieldsByFieldId=/.test(fullUrl)) {
+                    fullUrl += (fullUrl.includes('?') ? '&' : '?') + 'returnFieldsByFieldId=true';
+                  }
+                  translatedToNames = 'fallback';
+                  log('warn', `#${node._stepNum}: schema unavailable — using <code>?returnFieldsByFieldId=true</code> fallback to send field IDs. For cleaner behavior, add <code>schema.bases:read</code> scope to your AIRTABLE_PAT.`);
+                }
+              }
+            }
+          } catch {}
+        } else {
+          init.body = resolveTemplate(node.config.body, steps);
+        }
+        if (!headers['Content-Type'] && !headers['content-type'])
+          headers['Content-Type'] = 'application/json';
+      }
+      const modeNote = translatedToNames === true
+        ? ' (field IDs → names)'
+        : translatedToNames === 'fallback'
+          ? ' (returnFieldsByFieldId=true)'
+          : '';
+      // Capture INPUT for the inspector (resolved request, like Make's INPUT panel)
+      const qsParams = (node.config.params || [])
+        .filter(p => p.k)
+        .map(p => ({ key: resolveTemplate(p.k, steps), value: resolveTemplate(p.v, steps) }));
+      let requestContentForInspector = init.body ?? null;
+      if (typeof requestContentForInspector === 'string') {
+        try { requestContentForInspector = JSON.parse(requestContentForInspector); } catch {}
+      }
+      node._lastInput = {
+        URL: fullUrl,
+        Method: (node.config.method || '').toLowerCase(),
+        'Body type': init.body ? 'raw' : 'none',
+        'Content type': headers['Content-Type'] || headers['content-type'] || '',
+        'Request content': requestContentForInspector,
+        'Query String': qsParams.length ? qsParams : null,
+        Headers: Object.keys(headers).length
+          ? Object.entries(headers).map(([key, value]) => ({ key, value }))
+          : null,
+        'Parse response': true,
+        'Follow redirect': true,
+      };
+      log('info', `#${node._stepNum}: ${node.config.method} ${fullUrl}${modeNote}`);
+      if (droppedFields.length) {
+        log('warn', `#${node._stepNum}: dropped ${droppedFields.length} empty/unresolved field(s): <code>${droppedFields.join('</code>, <code>')}</code>`);
+      }
+      // One retry on transient network failure (TypeError from fetch usually means
+      // CORS, DNS blip, or connection reset). Don't retry on HTTP errors — those
+      // are deterministic and retrying won't help.
+      let res;
+      try {
+        res = await fetch(fullUrl, init);
+      } catch (netErr) {
+        log('warn', `#${node._stepNum}: network error (${netErr.message}), retrying in 1s…`);
+        await new Promise(r => setTimeout(r, 1000));
+        res = await fetch(fullUrl, init);
+      }
+      const ct = res.headers.get('content-type') || '';
+      const data = ct.includes('application/json') ? await res.json() : await res.text();
+      const result = { status: res.status, ok: res.ok, data };
+      log(res.ok ? 'ok' : 'err', `#${node._stepNum}: ← ${res.status}`, data);
+      // On error, ALSO log the request body so user can see what was sent
+      if (!res.ok && init.body) {
+        let displayBody;
+        try { displayBody = JSON.parse(init.body); }
+        catch { displayBody = init.body.slice(0, 500); }
+        log('err', `#${node._stepNum}: request body that failed:`, displayBody);
+
+        // UNKNOWN_FIELD_NAME — fetch the actual schema so user sees what fields exist
+        const errType = data?.error?.type;
+        if (isAirtable && errType === 'UNKNOWN_FIELD_NAME') {
+          const pathMatch = fullUrl.match(/\/v0\/(app[^/]+)\/(tbl[^/?]+)/);
+          if (pathMatch) {
+            const [, baseId, tableId] = pathMatch;
+            const pat = headers['Authorization'] || headers['authorization'] || '';
+            try {
+              log('info', `#${node._stepNum}: fetching table schema to help diagnose…`);
+              const schemaRes = await fetch(`https://api.airtable.com/v0/meta/bases/${baseId}/tables`, {
+                headers: { Authorization: pat },
+              });
+              if (schemaRes.ok) {
+                const schemaData = await schemaRes.json();
+                const tbl = (schemaData.tables || []).find(t => t.id === tableId);
+                if (tbl) {
+                  const fieldList = tbl.fields.map(f => ({ id: f.id, name: f.name, type: f.type }));
+                  log('warn', `#${node._stepNum}: actual fields in table <code>${tbl.name}</code> (<code>${tableId}</code>):`, fieldList);
+                } else {
+                  log('warn', `#${node._stepNum}: table ${tableId} not found in base ${baseId}. Available tables:`, (schemaData.tables || []).map(t => ({id: t.id, name: t.name})));
+                }
+              } else {
+                log('warn', `#${node._stepNum}: couldn't fetch schema (${schemaRes.status}). Ensure your AIRTABLE_PAT has <code>schema.bases:read</code> scope.`);
+              }
+            } catch (e) {
+              log('warn', `#${node._stepNum}: schema fetch failed: ${e.message}`);
+            }
+          }
+        }
+      }
+      // Flatten Airtable search response so {{7.id}} works like Make (first record's id)
+      if (isAirtable && res.ok && data && Array.isArray(data.records)) {
+        if (data.records.length > 0) {
+          const first = data.records[0];
+          const flatFields = await expandFieldKeys(first.fields || {}, fullUrl, headers);
+          Object.assign(result, first, { id: first.id, ...flatFields });
+        }
+      }
+      // Same for create/update: flatten top-level fields so {{N.id}} works
+      if (isAirtable && res.ok && data && data.id && data.fields) {
+        const flatFields = await expandFieldKeys(data.fields, fullUrl, headers);
+        Object.assign(result, { id: data.id, ...flatFields });
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${typeof data === 'string' ? data.slice(0, 200) : JSON.stringify(data).slice(0, 200)}`);
+      return result;
+    }
+    case 'filter': {
+      const ok = evalFilter(node.config.expression, prev, steps);
+      log(ok ? 'ok' : 'warn', `#${node._stepNum}: filter → ${ok ? 'PASS' : 'STOP'}`);
+      if (!ok) throw new Error('Filter halted execution');
+      return { passed: true, input: prev };
+    }
+    case 'router': return prev;
+    case 'sleep': {
+      const ms = Number(node.config.ms) || 0;
+      log('info', `#${node._stepNum}: sleep ${ms}ms`);
+      await sleep(ms);
+      return { waited: ms };
+    }
+    case 'iterator': {
+      const items = resolveIteratorSource(node, steps);
+      log('ok', `#${node._stepNum}: iterator resolved ${items.length} items (single-step run returns first item — ▶ Run All to loop them all)`);
+      return items[0] ?? null;
+    }
+    case 'aggregator': {
+      // Single-step run — no loop context. Just wrap prev.
+      let out;
+      if (node._make?.module === 'util:TextAggregator') {
+        const sep = node.config?.separator ?? ', ';
+        const value = node.config?.value ? resolveTemplate(node.config.value, steps) : prev;
+        out = { text: String(value ?? '') };
+      } else if (node.config.mode === 'count') out = 1;
+      else if (node.config.mode === 'sum')   out = Number(prev) || 0;
+      else out = [prev];
+      log('ok', `#${node._stepNum}: aggregator single-shot (▶ Run All to accumulate across iterator loops)`, out);
+      return out;
+    }
+    case 'unknown': {
+      log('warn', `#${node._stepNum}: unknown <code>${escapeHtml(node._make?.module)}</code> — skipped`);
+      return prev;
+    }
+  }
+}
+
+// ============================================================
+//   LOG / MODALS / UI EVENTS
+// ============================================================
+function log(tag, msg, payload) {
+  const body = $('#logs-body');
+  const row = document.createElement('div');
+  row.className = 'log-entry';
+  const t = new Date();
+  const time = t.toTimeString().slice(0, 8);
+  row.innerHTML = `
+    <div class="log-time">${time}</div>
+    <div class="log-tag ${tag}">${tag}</div>
+    <div class="log-msg">${msg}${payload !== undefined ? `<pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre>` : ''}</div>
+  `;
+  body.appendChild(row);
+  body.scrollTop = body.scrollHeight;
+}
+
+function openAddModal(targetList) {
+  const opts = $('#modal-add-options');
+  opts.innerHTML = '';
+  for (const [type, meta] of Object.entries(NODE_TYPES)) {
+    if (type === 'unknown') continue;
+    const el = document.createElement('div');
+    el.className = 'palette-item';
+    el.innerHTML = `<div class="palette-icon type-${type}">${meta.icon}</div><span>${meta.name}</span>`;
+    el.onclick = () => {
+      const n = makeNode(type);
+      targetList.push(n);
+      selectedId = n.id;
+      closeModal('modal-add');
+      render();
+      scheduleAutosave();
+    };
+    opts.appendChild(el);
+  }
+  openModal('modal-add');
+}
+
+function openModal(id) { $('#' + id).classList.add('open'); }
+function closeModal(id) { $('#' + id).classList.remove('open'); }
+
+document.addEventListener('click', e => {
+  if (e.target.classList?.contains('modal-backdrop')) {
+    e.target.classList.remove('open');
+  }
+  const closer = e.target.closest('[data-close-modal]');
+  if (closer) closeModal(closer.dataset.closeModal);
+});
+
+// ---- Workflows modal ----
+function openWorkflowsModal() {
+  const list = $('#saved-list');
+  const saved = loadWorkflows();
+  const entries = Object.entries(saved).sort((a, b) => b[1].savedAt - a[1].savedAt);
+  if (entries.length === 0) {
+    list.innerHTML = `<div class="empty-msg">No saved workflows yet. Click "Save Current As…" below.</div>`;
+  } else {
+    list.innerHTML = entries.map(([id, w]) => `
+      <div class="saved-item">
+        <div>
+          <div class="name">${escapeHtml(w.name)}</div>
+          <div class="meta">${countNodes(w.workflow)} modules · saved ${timeAgo(w.savedAt)}</div>
+        </div>
+        <button class="btn btn-sm" data-load-wf="${id}">Load</button>
+        <button class="btn btn-sm btn-danger" data-del-wf="${id}">×</button>
+      </div>
+    `).join('');
+    list.querySelectorAll('[data-load-wf]').forEach(b => {
+      b.onclick = () => loadSavedWorkflow(b.dataset.loadWf);
+    });
+    list.querySelectorAll('[data-del-wf]').forEach(b => {
+      b.onclick = () => {
+        if (!confirm('Delete this saved workflow?')) return;
+        const s = loadWorkflows();
+        delete s[b.dataset.delWf];
+        saveWorkflows(s);
+        openWorkflowsModal();
+      };
+    });
+  }
+  openModal('modal-workflows');
+}
+
+function loadSavedWorkflow(id) {
+  const saved = loadWorkflows();
+  const w = saved[id];
+  if (!w) return;
+  workflow = JSON.parse(JSON.stringify(w.workflow));
+  scenarioName = w.name;
+  scenarioMeta = w.scenarioMeta || null;
+  const reid = list => list.forEach(n => {
+    n.id = uid();
+    if (n.branches) n.branches.forEach(b => reid(b));
+  });
+  reid(workflow);
+  selectedId = null;
+  $('#scenario-name').textContent = scenarioName;
+  render();
+  closeModal('modal-workflows');
+  log('ok', `Loaded workflow: ${escapeHtml(scenarioName)}`);
+}
+
+$('#btn-save-current').onclick = () => {
+  const name = prompt('Save workflow as:', scenarioName);
+  if (!name) return;
+  const saved = loadWorkflows();
+  const id = 'wf_' + Date.now().toString(36);
+  saved[id] = {
+    name,
+    workflow: JSON.parse(JSON.stringify(workflow)),
+    scenarioMeta,
+    savedAt: Date.now(),
+  };
+  saveWorkflows(saved);
+  scenarioName = name;
+  $('#scenario-name').textContent = name;
+  log('ok', `Saved workflow: <code>${escapeHtml(name)}</code>`);
+  openWorkflowsModal();
+};
+
+// ---- Secrets modal ----
+function openSecretsModal() {
+  const secrets = loadSecrets();
+  let entries = Object.entries(secrets);
+  // Seed common keys if vault is empty
+  if (entries.length === 0) {
+    entries = [['AIRTABLE_PAT', ''], ['UNITE_TOKEN', '']];
+  }
+  const list = $('#secrets-list');
+  const render = () => {
+    list.innerHTML = '';
+    if (entries.length === 0) {
+      list.innerHTML = `<div class="empty-msg">No secrets yet. Add one below.</div>`;
+      return;
+    }
+    entries.forEach((entry, i) => {
+      const row = document.createElement('div');
+      row.className = 'secret-row';
+      row.innerHTML = `
+        <input type="text" placeholder="KEY_NAME" value="${escapeAttr(entry[0])}">
+        <input type="password" class="val" placeholder="paste value here" value="${escapeAttr(entry[1])}">
+        <button class="reveal" title="Show/hide">👁</button>
+        <button class="del" title="Delete">×</button>`;
+      const [ki, vi, eye, rb] = row.children;
+      ki.oninput = e => entries[i][0] = e.target.value;
+      vi.oninput = e => entries[i][1] = e.target.value;
+      eye.onclick = () => { vi.type = vi.type === 'password' ? 'text' : 'password'; };
+      rb.onclick = () => { entries.splice(i, 1); render(); };
+      list.appendChild(row);
+    });
+  };
+  render();
+  $('#btn-secret-add').onclick = () => {
+    entries.push(['', '']);
+    render();
+  };
+  $('#btn-save-secrets').onclick = () => {
+    const obj = {};
+    for (const [k, v] of entries) if (k.trim()) obj[k.trim()] = v;
+    saveSecrets(obj);
+    closeModal('modal-secrets');
+    log('ok', `Secrets saved: ${Object.keys(obj).join(', ') || 'none'}`);
+  };
+  openModal('modal-secrets');
+}
+
+// ---- Top bar events ----
+$('#btn-run').onclick = runWorkflow;
+$('#btn-clear').onclick = () => {
+  if (workflow.length && !confirm('Clear current workflow? (Saved workflows are kept)')) return;
+  workflow = []; selectedId = null; scenarioName = 'untitled scenario';
+  scenarioMeta = null; lastRunSteps = {};
+  $('#scenario-name').textContent = scenarioName;
+  render();
+  scheduleAutosave();
+};
+$('#btn-reset').onclick = () => {
+  if (!confirm('Discard the autosaved workflow and reload?\n\nThis fixes issues caused by stale cached state (e.g., 422 UNKNOWN_FIELD_NAME errors that persist after re-importing).\n\nKept: 💾 Saved workflows, 🔑 Vault keys.\nDiscarded: the in-progress autosave.')) return;
+  try { localStorage.removeItem(LS_AUTOSAVE); } catch {}
+  try { localStorage.removeItem('flowforge_autosave_v1'); } catch {}
+  location.reload();
+};
+$('#btn-clear-logs').onclick = () => $('#logs-body').innerHTML = '';
+
+$('#btn-export-ff').onclick = () => {
+  const data = { name: scenarioName, workflow, _meta: scenarioMeta };
+  download(JSON.stringify(data, null, 2), (scenarioName.replace(/\W+/g,'-') || 'workflow') + '.flowforge.json');
+};
+$('#btn-export-make').onclick = () => {
+  try {
+    const bp = exportToMake();
+    download(JSON.stringify(bp, null, 2), (scenarioName.replace(/\W+/g,'-') || 'scenario') + '.blueprint.json');
+    log('ok', 'Exported as Make blueprint.');
+  } catch (err) { log('err', `Export failed: ${err.message}`); }
+};
+$('#btn-import-ff').onclick = () => { importMode = 'flowforge'; $('#file-input').click(); };
+$('#btn-import-make').onclick = () => { importMode = 'make'; $('#file-input').click(); };
+$('#btn-workflows').onclick = openWorkflowsModal;
+$('#btn-secrets').onclick = openSecretsModal;
+
+$('#file-input').onchange = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (importMode === 'make' || data.flow || data.blueprint?.flow) {
+        importMakeBlueprint(data);
+      } else if (Array.isArray(data)) {
+        workflow = data.map(n => ({ ...n, id: uid() }));
+        scenarioName = 'imported (legacy)';
+        $('#scenario-name').textContent = scenarioName;
+        render();
+        scheduleAutosave();
+        log('ok', 'Imported FlowForge legacy workflow.');
+      } else if (data.workflow) {
+        const reid = list => list.forEach(n => {
+          n.id = uid();
+          if (n.branches) n.branches.forEach(b => reid(b));
+        });
+        workflow = data.workflow;
+        reid(workflow);
+        scenarioName = data.name || 'imported';
+        scenarioMeta = data._meta || null;
+        $('#scenario-name').textContent = scenarioName;
+        render();
+        scheduleAutosave();
+        log('ok', `Imported FlowForge workflow: ${escapeHtml(scenarioName)}`);
+      } else {
+        throw new Error('Unrecognized JSON format.');
+      }
+    } catch (err) {
+      log('err', `Import failed: ${err.message}`);
+      alert('Import failed: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+};
+
+function download(text, filename) {
+  const blob = new Blob([text], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+$('.palette').addEventListener('click', e => {
+  const item = e.target.closest('.palette-item');
+  if (!item) return;
+  const type = item.dataset.type;
+  if (!type) return;
+  const n = makeNode(type);
+  workflow.push(n);
+  selectedId = n.id;
+  render();
+  scheduleAutosave();
+});
+
+$('#btn-load-example').onclick = () => {
+  workflow = [
+    makeNode('http', 'Get Users'),
+    makeNode('filter', 'Only successful'),
+    makeNode('iterator', 'Iterate users'),
+    makeNode('aggregator', 'Count'),
+  ];
+  workflow[0].config = { method: 'GET', url: 'https://jsonplaceholder.typicode.com/users', headers: [], params: [], body: '' };
+  workflow[1].config = { expression: 'input.status === 200' };
+  workflow[2].config = { source: '{{1.data}}' };
+  workflow[3].config = { mode: 'count' };
+  scenarioName = 'example';
+  $('#scenario-name').textContent = scenarioName;
+  selectedId = null;
+  render();
+  scheduleAutosave();
+  log('info', 'Example loaded. Hit ▶ Run All or double-click a step to run just that one.');
+};
+
+// ============================================================
+//   BOOT
+// ============================================================
+const restored = restoreAutosave();
+render();
+if (!restored) {
+  log('info', 'FlowForge ready. Click ↑ Make to import a blueprint, or ⚡ Example to try it out.');
+}
+
+// ============================================================
+//  SERVER MODE — multi-flow management, scheduling, background runs
+// ============================================================
+
+const FF = {
+  currentFlowId: null,        // null = local-only, otherwise a server flow id
+  currentFlow: null,          // metadata + schedule for the current flow
+  saving: false,
+  pendingSave: false,
+  flows: [],                  // cached list from /api/flows
+  config: { kvConfigured: false, requiresAdminToken: false },
+  adminToken: null,           // sent in Authorization header if set
+  pollHandle: null,           // setInterval handle for run polling
+};
+
+const FF_ADMIN_KEY = 'flowforge_admin_token_v1';
+const FF_LAST_FLOW_KEY = 'flowforge_last_flow_v1';
+
+function ffPill(state, text) {
+  const el = document.getElementById('ff-sync-pill');
+  if (!el) return;
+  el.className = state || '';
+  el.textContent = text || state || '';
+}
+
+async function ffApi(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (FF.adminToken) headers['Authorization'] = `Bearer ${FF.adminToken}`;
+  const res = await fetch(path, { ...opts, headers });
+  let body;
+  try { body = await res.json(); } catch { body = null; }
+  if (!res.ok) {
+    const err = new Error(body?.error || `${res.status} ${res.statusText}`);
+    err.status = res.status;
+    throw err;
+  }
+  return body;
+}
+
+async function ffInit() {
+  // Pull saved admin token (if any) before health check
+  try { FF.adminToken = localStorage.getItem(FF_ADMIN_KEY) || null; } catch {}
+
+  let health;
+  try {
+    health = await fetch('/api/health').then(r => r.json());
+  } catch {
+    ffPill('offline', 'no server');
+    log('warn', 'No server detected. Running in local-only mode (changes save to localStorage).');
+    return;
+  }
+  FF.config = health;
+
+  if (!health.kvConfigured) {
+    ffPill('err', 'KV not set up');
+    log('err', 'Server is up but KV storage is not configured. See README → Vercel Marketplace → Upstash Redis.');
+    return;
+  }
+
+  if (health.requiresAdminToken && !FF.adminToken) {
+    promptAdminToken();
+    return;
+  }
+
+  await ffLoadFlows({ autoSelect: true });
+}
+
+function promptAdminToken() {
+  ffPill('err', 'auth needed');
+  const t = prompt('This deployment requires an admin token (FLOWFORGE_ADMIN_TOKEN env var on the server). Enter it now — it will be saved to this browser:');
+  if (!t) {
+    log('warn', 'Admin token not provided — server actions will fail. Refresh and re-enter to fix.');
+    return;
+  }
+  FF.adminToken = t.trim();
+  try { localStorage.setItem(FF_ADMIN_KEY, FF.adminToken); } catch {}
+  ffLoadFlows({ autoSelect: true });
+}
+
+async function ffLoadFlows({ autoSelect = false } = {}) {
+  try {
+    const { flows } = await ffApi('/api/flows');
+    FF.flows = flows;
+    ffRenderFlowsList();
+    if (autoSelect) {
+      let idToOpen = null;
+      try { idToOpen = localStorage.getItem(FF_LAST_FLOW_KEY); } catch {}
+      if (idToOpen && !flows.find(f => f.id === idToOpen)) idToOpen = null;
+      if (!idToOpen && flows.length > 0) idToOpen = flows[0].id;
+      if (idToOpen) await ffSelectFlow(idToOpen, { silent: true });
+      else ffPill('saved', 'no flows yet');
+    }
+  } catch (e) {
+    if (e.status === 401) { promptAdminToken(); return; }
+    ffPill('err', 'load failed');
+    log('err', `Couldn't load server flows: ${e.message}`);
+  }
+}
+
+async function ffSelectFlow(id, { silent = false } = {}) {
+  if (FF.saving) {
+    log('warn', 'Hold on — current flow is still saving. Try again in a sec.');
+    return;
+  }
+  try {
+    const { flow } = await ffApi(`/api/flows/${id}`);
+    FF.currentFlowId = flow.id;
+    FF.currentFlow = flow;
+    try { localStorage.setItem(FF_LAST_FLOW_KEY, flow.id); } catch {}
+
+    // Replace the editor's state with this flow's contents
+    workflow = JSON.parse(JSON.stringify(flow.workflow || []));
+    scenarioName = flow.name || 'untitled scenario';
+    scenarioMeta = flow.scenarioMeta || null;
+    // Re-id every node so React-style ID collisions don't bite when switching
+    const reid = list => list.forEach(n => {
+      n.id = uid();
+      if (n.branches) n.branches.forEach(b => reid(b));
+    });
+    reid(workflow);
+    document.getElementById('scenario-name').textContent = scenarioName;
+    render();
+    ffPill('saved', 'synced');
+    if (!silent) log('info', `Loaded flow: ${escapeHtml(flow.name)}`);
+    ffRenderFlowsList();
+  } catch (e) {
+    ffPill('err', 'load failed');
+    log('err', `Failed to load flow: ${e.message}`);
+  }
+}
+
+async function ffSaveCurrent() {
+  if (!FF.currentFlowId) return;            // local-only mode, nothing to do
+  if (FF.saving) { FF.pendingSave = true; return; }
+
+  FF.saving = true;
+  ffPill('saving', 'saving…');
+  try {
+    const { flow } = await ffApi(`/api/flows/${FF.currentFlowId}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        name: scenarioName,
+        workflow,
+        scenarioMeta,
+      }),
+    });
+    FF.currentFlow = flow;
+    ffPill('saved', 'synced');
+  } catch (e) {
+    ffPill('err', 'save failed');
+    log('err', `Server save failed: ${e.message}`);
+  } finally {
+    FF.saving = false;
+    if (FF.pendingSave) { FF.pendingSave = false; ffSaveCurrent(); }
+  }
+}
+
+// Hook the existing scheduleAutosave() so server saves happen in addition to
+// localStorage autosave. We don't replace it — local autosave is still useful
+// as a safety net even when connected.
+const _origScheduleAutosave = scheduleAutosave;
+let ffServerSaveTimer = null;
+scheduleAutosave = function () {
+  _origScheduleAutosave();
+  if (!FF.currentFlowId) return;
+  clearTimeout(ffServerSaveTimer);
+  ffServerSaveTimer = setTimeout(ffSaveCurrent, 1200);
+};
+
+// ---- Flows modal ----
+
+function openFlowsModal() {
+  ffRenderFlowsList();
+  openModal('modal-flows');
+}
+
+function ffRenderFlowsList() {
+  const list = document.getElementById('ff-flows-list');
+  const banner = document.getElementById('ff-flows-banner');
+  if (!list) return;
+
+  if (!FF.config.kvConfigured) {
+    banner.style.display = 'block';
+    banner.innerHTML = `<div style="background:rgba(255,126,128,0.1);border:1px solid var(--red);padding:10px;border-radius:6px;margin-bottom:10px;font-size:11px;color:var(--red);">
+      Server storage isn't configured. The server is reachable, but Vercel KV / Upstash Redis env vars are missing. See the README's <strong>Set up storage</strong> section.
+    </div>`;
+    list.innerHTML = '';
+    return;
+  } else {
+    banner.style.display = 'none';
+  }
+
+  if (!FF.flows.length) {
+    list.innerHTML = '<div class="empty-msg">No flows on the server yet. Click <strong>+ New Flow</strong> below to create one.</div>';
+    return;
+  }
+
+  list.innerHTML = FF.flows.map(f => {
+    const sched = f.schedule || { type: 'manual' };
+    const schedLabel = sched.type === 'manual' ? 'manual'
+      : sched.type === 'interval' ? `every ${sched.intervalMinutes}m`
+      : sched.type === 'cron' ? `cron: ${sched.cronExpr}`
+      : sched.type;
+    const lastRun = f.lastRunAt ? new Date(f.lastRunAt).toLocaleString() : 'never';
+    const isCurrent = f.id === FF.currentFlowId;
+    return `
+      <div class="ff-flow-row ${isCurrent ? 'current' : ''}" data-flow-id="${escapeHtml(f.id)}">
+        <div class="name">${escapeHtml(f.name)} ${isCurrent ? '<span style="color:var(--accent);font-size:9px;">(open)</span>' : ''}</div>
+        <span class="badge ${f.enabled ? 'on' : 'off'}">${f.enabled ? '● enabled' : '○ disabled'}</span>
+        <span class="meta">${escapeHtml(schedLabel)}</span>
+        <span class="meta">${f.nodeCount} nodes</span>
+        <span class="meta" title="Last run: ${lastRun}">${lastRun === 'never' ? 'never run' : 'ran ' + new Date(f.lastRunAt).toLocaleTimeString()}</span>
+        <button class="btn btn-sm btn-danger ff-flow-delete" data-flow-id="${escapeHtml(f.id)}" title="Delete this flow">⌫</button>
+      </div>`;
+  }).join('');
+
+  list.querySelectorAll('.ff-flow-row').forEach(row => {
+    row.addEventListener('click', async (e) => {
+      if (e.target.closest('.ff-flow-delete')) return;
+      const id = row.dataset.flowId;
+      closeModal('modal-flows');
+      await ffSelectFlow(id);
+    });
+  });
+  list.querySelectorAll('.ff-flow-delete').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.flowId;
+      const flow = FF.flows.find(f => f.id === id);
+      if (!confirm(`Delete flow "${flow?.name}"? This cannot be undone.`)) return;
+      try {
+        await ffApi(`/api/flows/${id}`, { method: 'DELETE' });
+        log('ok', `Deleted flow: ${escapeHtml(flow?.name || id)}`);
+        if (FF.currentFlowId === id) {
+          FF.currentFlowId = null;
+          FF.currentFlow = null;
+          workflow = [];
+          scenarioName = 'untitled scenario';
+          scenarioMeta = null;
+          document.getElementById('scenario-name').textContent = scenarioName;
+          render();
+          ffPill('offline', 'no flow');
+        }
+        await ffLoadFlows();
+      } catch (err) { log('err', `Delete failed: ${err.message}`); }
+    });
+  });
+}
+
+async function ffNewFlow() {
+  const name = prompt('Name the new flow:', 'untitled scenario');
+  if (name === null) return;
+  try {
+    const { flow } = await ffApi('/api/flows', {
+      method: 'POST',
+      body: JSON.stringify({ name: name || 'untitled scenario', workflow: [] }),
+    });
+    log('ok', `Created flow: ${escapeHtml(flow.name)}`);
+    await ffLoadFlows();
+    closeModal('modal-flows');
+    await ffSelectFlow(flow.id);
+  } catch (e) { log('err', `Create failed: ${e.message}`); }
+}
+
+async function ffDuplicateCurrent() {
+  if (!FF.currentFlowId) {
+    // No current flow — just upload whatever's in the editor as a new flow
+    if (workflow.length === 0) { log('warn', 'Nothing to duplicate.'); return; }
+  }
+  const name = prompt('Name the duplicate:', `${scenarioName} (copy)`);
+  if (name === null) return;
+  try {
+    const { flow } = await ffApi('/api/flows', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: name || `${scenarioName} (copy)`,
+        workflow: JSON.parse(JSON.stringify(workflow)),
+        scenarioMeta,
+      }),
+    });
+    log('ok', `Duplicated to: ${escapeHtml(flow.name)}`);
+    await ffLoadFlows();
+    closeModal('modal-flows');
+    await ffSelectFlow(flow.id);
+  } catch (e) { log('err', `Duplicate failed: ${e.message}`); }
+}
+
+async function ffRenameCurrent() {
+  if (!FF.currentFlowId) {
+    log('warn', 'No server flow loaded. Click + New Flow to start one.');
+    return;
+  }
+  const newName = prompt('Rename flow:', scenarioName);
+  if (newName === null || !newName.trim()) return;
+  scenarioName = newName.trim();
+  document.getElementById('scenario-name').textContent = scenarioName;
+  await ffSaveCurrent();
+  await ffLoadFlows();
+}
+
+// ---- Schedule modal ----
+
+function openScheduleModal() {
+  if (!FF.currentFlowId) {
+    log('warn', 'Open or create a server flow first.');
+    return;
+  }
+  const sched = FF.currentFlow?.schedule || { type: 'manual' };
+  document.getElementById('ff-sched-enabled').checked = FF.currentFlow?.enabled !== false;
+  document.getElementById('ff-sched-type').value = sched.type;
+  document.getElementById('ff-sched-interval').value = sched.intervalMinutes || 15;
+  document.getElementById('ff-sched-cron').value = sched.cronExpr || '*/15 * * * *';
+  ffSchedTypeChanged();
+  openModal('modal-schedule');
+}
+
+function ffSchedTypeChanged() {
+  const t = document.getElementById('ff-sched-type').value;
+  document.getElementById('ff-sched-interval-row').style.display = t === 'interval' ? '' : 'none';
+  document.getElementById('ff-sched-cron-row').style.display     = t === 'cron'     ? '' : 'none';
+}
+
+async function ffSaveSchedule() {
+  const type = document.getElementById('ff-sched-type').value;
+  const enabled = document.getElementById('ff-sched-enabled').checked;
+  const schedule = { type };
+  if (type === 'interval') {
+    const m = Number(document.getElementById('ff-sched-interval').value);
+    if (!m || m < 1) { alert('Interval must be at least 1 minute'); return; }
+    schedule.intervalMinutes = m;
+  } else if (type === 'cron') {
+    const expr = document.getElementById('ff-sched-cron').value.trim();
+    if (expr.split(/\s+/).length !== 5) {
+      alert('Cron expression must have exactly 5 space-separated fields: minute hour day-of-month month day-of-week');
+      return;
+    }
+    schedule.cronExpr = expr;
+  }
+  try {
+    const { flow } = await ffApi(`/api/flows/${FF.currentFlowId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ schedule, enabled }),
+    });
+    FF.currentFlow = flow;
+    log('ok', `Schedule updated: ${type}${type === 'interval' ? ` (every ${schedule.intervalMinutes}m)` : type === 'cron' ? ` (${schedule.cronExpr})` : ''}${enabled ? '' : ' [disabled]'}`);
+    closeModal('modal-schedule');
+    await ffLoadFlows();
+  } catch (e) { log('err', `Save schedule failed: ${e.message}`); }
+}
+
+// ---- Run history modal ----
+
+async function openHistoryModal() {
+  if (!FF.currentFlowId) { log('warn', 'Open a server flow first.'); return; }
+  document.getElementById('ff-hist-sub').textContent = `Recent runs of "${scenarioName}"`;
+  openModal('modal-history');
+  await ffRefreshHistory();
+}
+
+async function ffRefreshHistory() {
+  const listEl = document.getElementById('ff-history-list');
+  listEl.innerHTML = '<div class="empty-msg">Loading…</div>';
+  try {
+    const { runs } = await ffApi(`/api/flows/${FF.currentFlowId}/runs?limit=30`);
+    if (!runs.length) {
+      listEl.innerHTML = '<div class="empty-msg">No runs yet. Click ⚡ Run on Server to trigger one.</div>';
+      return;
+    }
+    listEl.innerHTML = runs.map(r => {
+      const dur = r.finishedAt && r.startedAt ? `${((r.finishedAt - r.startedAt) / 1000).toFixed(2)}s` : '…';
+      const when = new Date(r.startedAt).toLocaleString();
+      const lastLogText = r.lastLog?.msg || (r.error || '');
+      return `
+        <div class="ff-history-row" data-run-id="${escapeHtml(r.id)}">
+          <div class="row1">
+            <span class="status ${r.status}">${r.status.toUpperCase()}</span>
+            <span class="trigger">${escapeHtml(r.trigger || 'manual')}</span>
+            <span class="when">${escapeHtml(when)}</span>
+            <span class="meta" style="color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:10px;margin-left:auto;">${dur} · ${r.logCount} logs</span>
+            <button class="btn btn-sm btn-ghost ff-run-view" data-run-id="${escapeHtml(r.id)}">View</button>
+          </div>
+          <div class="lastlog">${escapeHtml(lastLogText || '')}</div>
+        </div>`;
+    }).join('');
+    listEl.querySelectorAll('.ff-run-view').forEach(b => {
+      b.addEventListener('click', async () => {
+        await ffShowRunDetails(b.dataset.runId);
+      });
+    });
+  } catch (e) {
+    listEl.innerHTML = `<div class="empty-msg" style="color:var(--red);">Failed: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function ffShowRunDetails(runId) {
+  try {
+    const { run } = await ffApi(`/api/runs/${runId}`);
+    log('info', `── Run ${runId} (${run.status}, trigger=${run.trigger || 'manual'}) ──`);
+    for (const entry of run.logs || []) {
+      log(entry.tag || 'info', entry.msg, entry.payload);
+    }
+    if (run.error) log('err', `Final error: ${run.error}`);
+    log('info', `── End run ${runId} ──`);
+    closeModal('modal-history');
+  } catch (e) { log('err', `Couldn't load run: ${e.message}`); }
+}
+
+// ---- Webhook modal ----
+
+function openWebhookModal() {
+  if (!FF.currentFlow) { log('warn', 'Open a server flow first.'); return; }
+  const url = `${location.origin}/api/webhooks/${FF.currentFlow.webhookToken}`;
+  document.getElementById('ff-webhook-url').textContent = url;
+  openModal('modal-webhook');
+}
+
+async function ffRotateWebhook() {
+  if (!confirm('Rotate the webhook token? Anything using the old URL will stop working immediately.')) return;
+  try {
+    const { flow } = await ffApi(`/api/flows/${FF.currentFlowId}/rotate-webhook`, { method: 'POST' });
+    FF.currentFlow = flow;
+    const url = `${location.origin}/api/webhooks/${flow.webhookToken}`;
+    document.getElementById('ff-webhook-url').textContent = url;
+    log('ok', 'Webhook token rotated.');
+  } catch (e) { log('err', `Rotate failed: ${e.message}`); }
+}
+
+// ---- Run on Server ----
+
+async function ffRunOnServer() {
+  if (!FF.currentFlowId) {
+    log('warn', 'Open or create a server flow first to run it on the server. (▶ Run Local works without one.)');
+    return;
+  }
+  if (FF.saving) {
+    log('info', 'Waiting for current save to finish before triggering…');
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  try {
+    log('info', `── Triggering server run of "${scenarioName}" ──`);
+    const { run } = await ffApi(`/api/flows/${FF.currentFlowId}/run`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    log('ok', `Queued run ${run.id}. Polling for updates…`);
+    ffPollRun(run.id);
+  } catch (e) { log('err', `Trigger failed: ${e.message}`); }
+}
+
+function ffPollRun(runId) {
+  if (FF.pollHandle) clearInterval(FF.pollHandle);
+  let lastLogCount = 0;
+  let pollCount = 0;
+  FF.pollHandle = setInterval(async () => {
+    pollCount++;
+    try {
+      const { run } = await ffApi(`/api/runs/${runId}`);
+      // Stream new log entries since last poll
+      const logs = run.logs || [];
+      for (let i = lastLogCount; i < logs.length; i++) {
+        const e = logs[i];
+        log(e.tag || 'info', `[server] ${e.msg}`, e.payload);
+      }
+      lastLogCount = logs.length;
+      if (run.status !== 'queued' && run.status !== 'running') {
+        clearInterval(FF.pollHandle);
+        FF.pollHandle = null;
+        log(run.status === 'ok' ? 'ok' : run.status === 'err' ? 'err' : 'warn',
+            `── Server run finished: ${run.status} ──`);
+      }
+      if (pollCount > 120) { // safety: ~4 minutes at 2s intervals
+        clearInterval(FF.pollHandle);
+        FF.pollHandle = null;
+        log('warn', 'Stopped polling — run is taking a while. Check the History modal for status.');
+      }
+    } catch (e) {
+      clearInterval(FF.pollHandle);
+      FF.pollHandle = null;
+      log('warn', `Poll stopped: ${e.message}`);
+    }
+  }, 2000);
+}
+
+// ---- Wire up buttons ----
+
+document.getElementById('btn-flows').onclick    = openFlowsModal;
+document.getElementById('btn-schedule').onclick = openScheduleModal;
+document.getElementById('btn-history').onclick  = openHistoryModal;
+document.getElementById('btn-webhook').onclick  = openWebhookModal;
+document.getElementById('btn-run-server').onclick = ffRunOnServer;
+document.getElementById('ff-btn-flow-new').onclick = ffNewFlow;
+document.getElementById('ff-btn-flow-duplicate').onclick = ffDuplicateCurrent;
+document.getElementById('ff-btn-flow-rename').onclick = ffRenameCurrent;
+document.getElementById('ff-btn-sched-save').onclick = ffSaveSchedule;
+document.getElementById('ff-sched-type').onchange = ffSchedTypeChanged;
+document.getElementById('ff-btn-hist-refresh').onclick = ffRefreshHistory;
+document.getElementById('ff-btn-webhook-rotate').onclick = ffRotateWebhook;
+document.getElementById('ff-btn-webhook-copy').onclick = () => {
+  const url = document.getElementById('ff-webhook-url').textContent;
+  navigator.clipboard.writeText(url).then(
+    () => log('ok', 'Webhook URL copied to clipboard.'),
+    () => log('warn', 'Copy failed. Select and copy manually.'),
+  );
+};
+
+// When user imports a Make blueprint or FF JSON, offer to save it as a server flow
+const _origImportMakeBlueprint = importMakeBlueprint;
+importMakeBlueprint = function (json) {
+  _origImportMakeBlueprint(json);
+  ffOfferUploadAfterImport();
+};
+
+function ffOfferUploadAfterImport() {
+  if (!FF.config.kvConfigured) return;
+  if (FF.currentFlowId) {
+    // Already on a server flow — just save the imported workflow into it
+    ffSaveCurrent();
+    log('info', `Imported workflow saved into current flow "${scenarioName}".`);
+    return;
+  }
+  // No current server flow — offer to create one
+  setTimeout(async () => {
+    const yes = confirm(`Import done. Save "${scenarioName}" as a new flow on the server so you can schedule it and trigger it via webhook?`);
+    if (!yes) return;
+    try {
+      const { flow } = await ffApi('/api/flows', {
+        method: 'POST',
+        body: JSON.stringify({ name: scenarioName, workflow, scenarioMeta }),
+      });
+      FF.currentFlowId = flow.id;
+      FF.currentFlow = flow;
+      try { localStorage.setItem(FF_LAST_FLOW_KEY, flow.id); } catch {}
+      ffPill('saved', 'synced');
+      log('ok', `Saved as server flow.`);
+      await ffLoadFlows();
+    } catch (e) { log('err', `Server save failed: ${e.message}`); }
+  }, 200);
+}
+
+ffInit();
+
+</script>
+</body>
+</html>
